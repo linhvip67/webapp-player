@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍿 Xem Phim Subteam</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: #000;
+            display: flex; justify-content: center; align-items: center;
+            font-family: sans-serif; overflow: hidden;
+        }
+        .video-container {
+            width: 100%; max-width: 800px;
+            background: #000;
+        }
+        #error-msg {
+            color: #fff; text-align: center; padding: 20px; font-size: 16px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="video-container">
+        <video id="player" playsinline controls>
+            <source id="video-src" src="" type="video/mp4" />
+        </video>
+        <div id="error-msg">⚠️ Không thể tải video hoặc link phim đã hết hạn!</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // Khởi tạo Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Kéo kịch màn hình lên trên cho mượt
+
+        // Hàm lấy link phim được mã hóa từ URL do Bot gửi sang
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        const encodedLink = getQueryParam("link");
+
+        if (encodedLink) {
+            try {
+                // Giải mã ngược lại link phim gốc để đưa vào trình phát video
+                const decodedLink = atob(encodedLink); 
+                document.getElementById("video-src").src = decodedLink;
+                
+                // Khởi động trình phát phim
+                const player = new Plyr('#player', {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'fullscreen']
+                });
+            } catch (e) {
+                document.getElementById("error-msg").style.display = "block";
+                document.getElementById("player").style.display = "none";
+            }
+        } else {
+            document.getElementById("error-msg").style.display = "block";
+            document.getElementById("player").style.display = "none";
+        }
+
+        // BIỆN PHÁP BẢO MẬT: Chống user phổ thông bấm F12 hoặc chuột phải để soi link gốc
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123) return false; // Chặn F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+        }
+    </script>
+</body>
+</html>
