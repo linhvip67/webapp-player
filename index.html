@@ -4,63 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍿 Xem Phim Subteam</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
     <style>
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            background-color: #000; overflow: hidden; 
-        }
-        iframe { 
-            width: 100%; height: 100%; border: none; 
-        }
-        #error-msg { 
-            color: #fff; text-align: center; padding: 20px; font-family: sans-serif; display: none; margin-top: 50px;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; }
+        .video-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        video { width: 100%; max-height: 100%; }
+        #error-msg { color: #fff; text-align: center; padding: 20px; font-family: sans-serif; display: none; }
     </style>
 </head>
 <body>
-    <iframe id="player" allow="autoplay; fullscreen" allowfullscreen></iframe>
-    <div id="error-msg">⚠️ Không thể tải phim hoặc link đã hỏng.</div>
+    <div class="video-container" id="vid-container">
+        <video id="player" playsinline controls>
+            <source id="video-src" src="" type="video/mp4" />
+        </video>
+    </div>
+    <div id="error-msg">⚠️ Không thể tải video hoặc link đã hỏng!</div>
 
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Mở rộng kịch màn hình Telegram
+        tg.expand();
 
-        function getQueryParam(param) {
-            return new URLSearchParams(window.location.search).get(param);
-        }
-
-        const encodedLink = getQueryParam("link");
+        const encodedLink = new URLSearchParams(window.location.search).get("link");
 
         if (encodedLink) {
             try {
-                let decodedLink = atob(encodedLink);
-                
-                // MẸO TRỊ SHAREPOINT: Tự động ép link thành dạng Embed
-                if (decodedLink.includes("sharepoint.com") || decodedLink.includes("onedrive.live.com")) {
-                     if (decodedLink.includes("?")) {
-                         decodedLink += "&action=embedview&wmode=transparent";
-                     } else {
-                         decodedLink += "?action=embedview&wmode=transparent";
-                     }
-                }
-                
-                document.getElementById("player").src = decodedLink;
+                // Nhận link đã mã hóa từ Cloudflare
+                document.getElementById("video-src").src = atob(encodedLink);
+                new Plyr('#player', {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'fullscreen']
+                });
             } catch (e) {
                 document.getElementById("error-msg").style.display = "block";
-                document.getElementById("player").style.display = "none";
+                document.getElementById("vid-container").style.display = "none";
             }
         } else {
             document.getElementById("error-msg").style.display = "block";
-            document.getElementById("player").style.display = "none";
+            document.getElementById("vid-container").style.display = "none";
         }
 
-        // BẢO MẬT: Chống F12, chống chuột phải để giấu link gốc
+        // Lớp khiên bảo vệ: Chặn soi link, F12
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) {
-            if (e.keyCode == 123) return false;
-            if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false;
         }
     </script>
 </body>
