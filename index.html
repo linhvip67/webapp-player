@@ -3,125 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍿 Xem Phim Subteam</title>
-    <!-- ĐÃ FIX: GỌI LẠI THƯ VIỆN PLYR ĐỂ XỬ LÝ VIDEO -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
+    <title>🍿 Chọn Tập Phim</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
-        /* Khung Video */
-        .video-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative;}
-        video { width: 100%; height: 100%; outline: none; }
-        #error-msg { text-align: center; padding: 20px; display: none; color: #ff4d4f; font-weight: bold;}
+        body { background-color: #0b0f19; color: white; font-family: sans-serif; padding: 20px; text-align: center; margin: 0;}
+        h2 { color: #e50914; margin-bottom: 20px;}
+        
+        /* Loading Text */
+        #loading { margin-top: 50px; }
 
-        /* Khung chọn Mùa & Tập */
-        .controls-container { padding: 15px; display: none; }
+        /* Khung chọn Mùa */
+        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; justify-content: center;}
+        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 10px 20px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
+        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914;}
         
-        /* Tab Mùa */
-        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; border-bottom: 1px solid #2a2e39; margin-bottom: 15px; }
-        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 18px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
-        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
-        
-        /* Grid Tập */
-        .episodes-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 12px; border-radius: 8px; cursor: pointer; text-align: center; font-size: 14px; flex: 1 1 calc(20% - 10px); box-sizing: border-box; min-width: 65px; transition: 0.2s;}
-        .ep-btn:active { transform: scale(0.95); }
-        .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; font-weight: bold;}
-        
+        /* Grid Chọn Tập */
+        .episodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 15px 5px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: block; box-sizing: border-box; transition: 0.2s;}
+        .ep-btn:active { transform: scale(0.95); background: #e50914;}
+
+        /* Cuộn ngang */
         ::-webkit-scrollbar { height: 4px; }
         ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
-        
-        /* Chống viền xanh của Plyr */
-        .plyr { height: 100%; width: 100%; }
     </style>
 </head>
 <body>
-    <div class="video-container" id="vid-container">
-        <!-- ĐÃ FIX: TRẢ LẠI THẺ SOURCE BÊN TRONG VIDEO -->
-        <video id="player" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
-            <source id="video-src" src="" type="video/mp4" />
-        </video>
-    </div>
+    <div id="loading"><h3>🍿 Đang kết nối máy chủ phim...</h3></div>
     
-    <div id="error-msg">⚠️ Lỗi: Không thể phân tích dữ liệu phim hoặc link hỏng!</div>
-
-    <!-- UI Các Nút Chọn Tập -->
-    <div class="controls-container" id="controls-ui">
+    <div id="ui-container" style="display:none;">
+        <h2>🎬 CHỌN TẬP PHIM</h2>
         <div class="season-tabs" id="season-tabs"></div>
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
 
-    <!-- ĐÃ FIX: KÉO LẠI JS CỦA PLYR -->
-    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
+        window.Telegram.WebApp.expand();
         let seriesData = [];
-        let plyrInstance = null;
 
-        // Hàm khởi tạo Player chuyên nghiệp
-        function initPlyr() {
-            if (!plyrInstance) {
-                plyrInstance = new Plyr('#player', {
-                    controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'fullscreen']
-                });
-            }
-        }
-
-        // ĐÃ FIX: Hàm chuyển tập phim dùng API chuẩn của Plyr (Đảm bảo 100% load được file mp4 từ SharePoint)
-        function playEpisode(url, epBtn) {
-            initPlyr();
-            
-            // Ép Plyr nạp lại nguồn phát mới
-            plyrInstance.source = {
-                type: 'video',
-                sources: [{ src: url, type: 'video/mp4' }]
-            };
-            
-            // Xử lý tự động chạy
-            plyrInstance.play().catch(e => {
-                console.log("Hệ thống chặn tự phát video. Khách cần chạm Play.");
-            });
-
-            // Cập nhật giao diện nút đang chiếu
-            document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
-            if(epBtn) epBtn.classList.add('playing');
-        }
-
+        // Hàm render danh sách tập theo Mùa
         function renderEpisodes(seasonIndex) {
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
+            // Cập nhật tab active
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIndex);
             });
 
+            // Lấy danh sách link của Mùa được chọn
             const episodes = seriesData[seasonIndex].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
                 btn.className = "ep-btn";
                 btn.innerText = "Tập " + (idx + 1);
-                btn.onclick = () => playEpisode(url, btn);
+                
+                // Khi khách bấm chọn tập -> Đẩy thẳng trình duyệt vào SharePoint
+                btn.onclick = () => {
+                    document.getElementById("ui-container").style.display = "none";
+                    document.getElementById("loading").innerHTML = "<h3>🍿 Đang tải phim...</h3>";
+                    document.getElementById("loading").style.display = "block";
+                    window.location.replace(url);
+                };
                 epsGrid.appendChild(btn);
             });
         }
 
         function initApp() {
             const encodedLink = new URLSearchParams(window.location.search).get("link");
-            if (!encodedLink) throw new Error("Missing link parameter");
-
-            let decoded = "";
-            try {
-                // ĐÃ FIX: Bộ giải mã xịn, không bị lỗi Tiếng Việt (Mùa 1, Mùa 2...)
-                decoded = decodeURIComponent(escape(atob(encodedLink))); 
-            } catch(e) {
-                // Sơ cua nếu mã hóa bị thuần ASCII
-                decoded = atob(encodedLink);
+            if (!encodedLink) {
+                document.getElementById("loading").innerHTML = "⚠️ Lỗi: Không có dữ liệu phim!";
+                return;
             }
 
+            // Giải mã an toàn để không lỗi font Tiếng Việt
+            let decoded = "";
+            try { 
+                decoded = decodeURIComponent(escape(atob(encodedLink))); 
+            } catch(e) { 
+                decoded = atob(encodedLink); 
+            }
+
+            // ==========================================
+            // LOGIC SỬA LỖI: NẾU LÀ PHIM LẺ (KHÔNG CÓ DẤU |)
+            // ==========================================
+            if (!decoded.includes("|") && !decoded.includes("||")) {
+                // Chuyển hướng thẳng luôn, bỏ qua Menu chọn tập!
+                window.location.replace(decoded.trim());
+                return;
+            }
+
+            // ==========================================
+            // LOGIC PHIM BỘ: DỰNG GIAO DIỆN MENU
+            // ==========================================
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("ui-container").style.display = "block";
+
             if (decoded.includes("||")) {
-                // PHIM SIÊU BỘ (Nhiều Mùa)
+                // Kiểu: Có phân Mùa/Phần
                 const seasonParts = decoded.split("||");
                 seasonParts.forEach((part, idx) => {
                     let sName = "Phần " + (idx + 1);
@@ -138,58 +116,40 @@
                         episodes: sLinks.split("|").map(l => l.trim()).filter(l => l)
                     });
                 });
-            } else if (decoded.includes("|")) {
-                // PHIM BỘ (1 Mùa)
+            } else {
+                // Kiểu: Chỉ có danh sách tập (không có Mùa)
                 seriesData.push({
                     name: "Danh sách Tập",
                     episodes: decoded.split("|").map(l => l.trim()).filter(l => l)
                 });
-            } else {
-                // PHIM LẺ
-                seriesData.push({
-                    name: "Phim Lẻ",
-                    episodes: [decoded.trim()]
-                });
             }
 
-            // DỰNG GIAO DIỆN
-            if (seriesData.length > 0) {
-                if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
-                    document.getElementById("controls-ui").style.display = "block";
-                    
-                    const sTabs = document.getElementById("season-tabs");
-                    if (seriesData.length > 1) {
-                        seriesData.forEach((season, idx) => {
-                            const btn = document.createElement("div");
-                            btn.className = "season-btn";
-                            btn.innerText = season.name;
-                            btn.onclick = () => renderEpisodes(idx);
-                            sTabs.appendChild(btn);
-                        });
-                    } else {
-                        sTabs.style.display = "none";
-                    }
-                    
-                    renderEpisodes(0);
-                    const firstEpBtn = document.querySelector('.ep-btn');
-                    playEpisode(seriesData[0].episodes[0], firstEpBtn);
-                } else {
-                    // Dựng phim lẻ trực tiếp
-                    playEpisode(seriesData[0].episodes[0]);
-                }
+            const sTabs = document.getElementById("season-tabs");
+            // Render Tab Mùa nếu có nhiều hơn 1 mùa
+            if (seriesData.length > 1) {
+                seriesData.forEach((season, idx) => {
+                    const btn = document.createElement("div");
+                    btn.className = "season-btn";
+                    btn.innerText = season.name;
+                    btn.onclick = () => renderEpisodes(idx);
+                    sTabs.appendChild(btn);
+                });
+            } else {
+                sTabs.style.display = "none";
             }
+            
+            // Hiển thị danh sách tập của Mùa đầu tiên
+            renderEpisodes(0);
         }
 
         try {
             initApp();
-        } catch (e) {
-            document.getElementById("error-msg").style.display = "block";
-            document.getElementById("vid-container").style.display = "none";
+        } catch(e) {
+            document.getElementById("loading").innerHTML = "⚠️ Lỗi hệ thống: " + e.message;
         }
 
-        // BẢO MẬT: Chống F12, vô hiệu hóa menu chuột phải
+        // Lớp bảo vệ UX cơ bản
         document.addEventListener('contextmenu', event => event.preventDefault());
-        document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
 </body>
 </html>
