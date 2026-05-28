@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍿 Xem Phim Subteam</title>
+    <!-- ĐÃ FIX: GỌI LẠI THƯ VIỆN PLYR ĐỂ XỬ LÝ VIDEO -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" />
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
         /* Khung Video */
@@ -11,7 +13,7 @@
         video { width: 100%; height: 100%; outline: none; }
         #error-msg { text-align: center; padding: 20px; display: none; color: #ff4d4f; font-weight: bold;}
 
-        /* Khung chọn Mùa & Tập (Chuẩn UI Netflix) */
+        /* Khung chọn Mùa & Tập */
         .controls-container { padding: 15px; display: none; }
         
         /* Tab Mùa */
@@ -25,19 +27,22 @@
         .ep-btn:active { transform: scale(0.95); }
         .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; font-weight: bold;}
         
-        /* Tùy chỉnh thanh cuộn ngang mượt mà */
         ::-webkit-scrollbar { height: 4px; }
         ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
+        
+        /* Chống viền xanh của Plyr */
+        .plyr { height: 100%; width: 100%; }
     </style>
 </head>
 <body>
     <div class="video-container" id="vid-container">
-        <!-- Đã bỏ thẻ <source> ở trong, dùng JS ép link thẳng vào <video> -->
+        <!-- ĐÃ FIX: TRẢ LẠI THẺ SOURCE BÊN TRONG VIDEO -->
         <video id="player" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
+            <source id="video-src" src="" type="video/mp4" />
         </video>
     </div>
     
-    <div id="error-msg">⚠️ Lỗi: Không thể phân tích dữ liệu phim!</div>
+    <div id="error-msg">⚠️ Lỗi: Không thể phân tích dữ liệu phim hoặc link hỏng!</div>
 
     <!-- UI Các Nút Chọn Tập -->
     <div class="controls-container" id="controls-ui">
@@ -45,40 +50,49 @@
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
 
+    <!-- ĐÃ FIX: KÉO LẠI JS CỦA PLYR -->
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         let seriesData = [];
+        let plyrInstance = null;
 
-        // Hàm đổi tập phim đã được FIX cứng cáp
-        function playEpisode(url, epBtn) {
-            const player = document.getElementById("player");
-            
-            // ÉP TRỰC TIẾP LINK VÀO LÕI THẺ VIDEO (Fix lỗi đen màn hình)
-            player.src = url;
-            player.load();
-            
-            // Xử lý thông minh: Thử tự động phát, nếu trình duyệt chặn thì chờ khách tự bấm
-            let playPromise = player.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Hệ điều hành chặn Autoplay, chờ khách chạm vào màn hình.");
+        // Hàm khởi tạo Player chuyên nghiệp
+        function initPlyr() {
+            if (!plyrInstance) {
+                plyrInstance = new Plyr('#player', {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'fullscreen']
                 });
             }
+        }
 
-            // Highlight nút đang chiếu
+        // ĐÃ FIX: Hàm chuyển tập phim dùng API chuẩn của Plyr (Đảm bảo 100% load được file mp4 từ SharePoint)
+        function playEpisode(url, epBtn) {
+            initPlyr();
+            
+            // Ép Plyr nạp lại nguồn phát mới
+            plyrInstance.source = {
+                type: 'video',
+                sources: [{ src: url, type: 'video/mp4' }]
+            };
+            
+            // Xử lý tự động chạy
+            plyrInstance.play().catch(e => {
+                console.log("Hệ thống chặn tự phát video. Khách cần chạm Play.");
+            });
+
+            // Cập nhật giao diện nút đang chiếu
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
             if(epBtn) epBtn.classList.add('playing');
         }
 
-        // Hàm render danh sách tập theo Mùa được chọn
         function renderEpisodes(seasonIndex) {
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
-            // Highlight tab Mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIndex);
             });
@@ -93,15 +107,21 @@
             });
         }
 
-        // Hàm phân tích Dữ liệu và dựng Giao diện
-        function initPlayer() {
+        function initApp() {
             const encodedLink = new URLSearchParams(window.location.search).get("link");
-            if (!encodedLink) throw new Error("No link");
+            if (!encodedLink) throw new Error("Missing link parameter");
 
-            const decoded = decodeURIComponent(escape(atob(encodedLink))); 
+            let decoded = "";
+            try {
+                // ĐÃ FIX: Bộ giải mã xịn, không bị lỗi Tiếng Việt (Mùa 1, Mùa 2...)
+                decoded = decodeURIComponent(escape(atob(encodedLink))); 
+            } catch(e) {
+                // Sơ cua nếu mã hóa bị thuần ASCII
+                decoded = atob(encodedLink);
+            }
 
             if (decoded.includes("||")) {
-                // KIỂU 3: CÓ NHIỀU MÙA
+                // PHIM SIÊU BỘ (Nhiều Mùa)
                 const seasonParts = decoded.split("||");
                 seasonParts.forEach((part, idx) => {
                     let sName = "Phần " + (idx + 1);
@@ -119,13 +139,13 @@
                     });
                 });
             } else if (decoded.includes("|")) {
-                // KIỂU 2: CHỈ CÓ 1 MÙA (NHIỀU TẬP)
+                // PHIM BỘ (1 Mùa)
                 seriesData.push({
                     name: "Danh sách Tập",
                     episodes: decoded.split("|").map(l => l.trim()).filter(l => l)
                 });
             } else {
-                // KIỂU 1: PHIM LẺ
+                // PHIM LẺ
                 seriesData.push({
                     name: "Phim Lẻ",
                     episodes: [decoded.trim()]
@@ -154,13 +174,14 @@
                     const firstEpBtn = document.querySelector('.ep-btn');
                     playEpisode(seriesData[0].episodes[0], firstEpBtn);
                 } else {
+                    // Dựng phim lẻ trực tiếp
                     playEpisode(seriesData[0].episodes[0]);
                 }
             }
         }
 
         try {
-            initPlayer();
+            initApp();
         } catch (e) {
             document.getElementById("error-msg").style.display = "block";
             document.getElementById("vid-container").style.display = "none";
