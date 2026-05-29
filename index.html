@@ -3,39 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍿 Chọn Tập Phim</title>
+    <title>🍿 Xem Phim Subteam</title>
     <style>
-        body { background-color: #0b0f19; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
-        h3 { color: #f1c40f; margin-bottom: 20px; text-transform: uppercase;}
+        body { background-color: #0b0f19; color: #fff; font-family: sans-serif; text-align: center; padding: 0; margin: 0; overflow: hidden; }
+        
+        /* GIAO DIỆN CHỌN TẬP */
+        #ui-container { padding: 20px; overflow-y: auto; height: 100vh; box-sizing: border-box; }
+        h3 { color: #f1c40f; margin-bottom: 20px; text-transform: uppercase; }
         h4 { color: #94a3b8; text-align: left; border-bottom: 1px solid #2a2e39; padding-bottom: 8px; margin-top: 25px; font-size: 16px; }
         .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
         button { background-color: #1c212e; border: 1px solid #2a2e39; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33.33% - 10px); min-width: 80px; font-weight: bold; transition: 0.2s;}
         button:active { background-color: #e50914; border-color: #e50914; transform: scale(0.95);}
         #status { margin-top: 50px; font-size: 18px; color: #94a3b8;}
+        
+        /* TRÌNH PHÁT NHÚNG (IFRAME) - Ẩn link gốc */
+        #player-container { display: none; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; background: #000; z-index: 100; }
+        iframe { width: 100%; height: 100%; border: none; outline: none; }
+        
+        /* NÚT QUAY LẠI CHỌN TẬP */
+        #back-btn { position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; border: 1px solid #444; padding: 8px 15px; border-radius: 20px; z-index: 999; cursor: pointer; font-weight: bold; backdrop-filter: blur(5px); }
+        
+        /* 🛡️ WATERMARK UID CHỐNG QUAY MÀN HÌNH */
+        #watermark {
+            position: fixed;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 18px;
+            font-weight: bold;
+            font-family: monospace;
+            pointer-events: none; /* Bỏ qua tương tác tay, không gây kẹt màn hình */
+            user-select: none;
+            z-index: 9999;
+            text-shadow: 1px 1px 2px #000;
+            animation: floatWatermark 20s infinite alternate ease-in-out;
+            display: none;
+        }
+
+        @keyframes floatWatermark {
+            0% { top: 10%; left: 5%; transform: rotate(-5deg); }
+            25% { top: 80%; left: 60%; transform: rotate(10deg); }
+            50% { top: 20%; left: 80%; transform: rotate(-10deg); }
+            75% { top: 70%; left: 10%; transform: rotate(5deg); }
+            100% { top: 40%; left: 40%; transform: rotate(0deg); }
+        }
     </style>
 </head>
 <body>
-    <div id="content">
+    <div id="ui-container">
         <div id="status">Đang nạp dữ liệu...</div>
     </div>
+
+    <div id="player-container">
+        <button id="back-btn" onclick="goBack()">🔙 Đổi tập</button>
+        <iframe id="video-frame" src="" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+    </div>
+
+    <div id="watermark">UID: Đang tải...</div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
         
-        // HÀM RỬA LINK: Ép Microsoft chạy nền web, không cho gọi App OneDrive
-        function processLink(url) {
+        // Nhận ID Telegram từ Bot để gán vào Watermark
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get("uid") || "Ẩn_Danh";
+        document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
+
+        // 🛑 THUẬT TOÁN ÉP NHÚNG ONEDRIVE BUSINESS
+        function processEmbedLink(url) {
             let finalUrl = url.trim();
             if (finalUrl.includes("sharepoint.com") || finalUrl.includes("1drv.ms")) {
-                if (!finalUrl.includes("web=1")) {
-                    finalUrl += (finalUrl.includes("?") ? "&" : "?") + "web=1";
+                // Thêm tham số bắt buộc để OneDrive Business cho phép iframe
+                if (!finalUrl.includes("action=embedview")) {
+                    finalUrl += (finalUrl.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
                 }
             }
             return finalUrl;
         }
 
+        // Kích hoạt Iframe
+        function playVideo(url) {
+            document.getElementById("ui-container").style.display = "none";
+            document.getElementById("player-container").style.display = "block";
+            document.getElementById("watermark").style.display = "block"; // Bật khiên chống quay lén
+            document.getElementById("video-frame").src = processEmbedLink(url);
+        }
+
+        // Tắt Iframe để về danh sách tập
+        function goBack() {
+            document.getElementById("video-frame").src = ""; // Cắt luồng video
+            document.getElementById("player-container").style.display = "none";
+            document.getElementById("watermark").style.display = "none";
+            document.getElementById("ui-container").style.display = "block";
+        }
+
         function init() {
-            const encodedLink = new URLSearchParams(window.location.search).get("link");
+            const encodedLink = urlParams.get("link");
             if (!encodedLink) {
                 document.getElementById("status").innerText = "⚠️ Lỗi: Không tìm thấy dữ liệu phim!";
                 return;
@@ -43,20 +105,14 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // ==========================================
-            // TRƯỜNG HỢP 1: PHIM LẺ
-            // ==========================================
+            // TRƯỜNG HỢP 1: PHIM LẺ -> Chạy thẳng vào Iframe
             if (!decoded.includes("|")) {
-                document.getElementById("status").innerText = "🍿 Đang mở phim...";
-                // Phim lẻ tự động nhảy thẳng
-                window.location.replace(processLink(decoded));
+                playVideo(decoded);
                 return;
             }
 
-            // ==========================================
-            // TRƯỜNG HỢP 2: PHIM BỘ (CHỌN TẬP)
-            // ==========================================
-            document.getElementById("content").innerHTML = "<h3>🎬 Danh sách Tập</h3><div id='list'></div>";
+            // TRƯỜNG HỢP 2: PHIM BỘ -> Dựng danh sách nút bấm
+            document.getElementById("ui-container").innerHTML = "<h3>🎬 Danh sách Tập</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
             if (decoded.includes("||")) {
@@ -79,11 +135,8 @@
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
                             
-                            // CHUYỂN HƯỚNG TRỰC TIẾP LÚC CHẠM TAY
-                            btn.onclick = () => {
-                                document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang tải tập " + (index + 1) + "...</div>";
-                                window.location.href = processLink(link);
-                            };
+                            // Ấn phát là gọi hàm Iframe, không nhảy link
+                            btn.onclick = () => playVideo(link);
                             container.appendChild(btn);
                         }
                     });
@@ -100,11 +153,7 @@
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
                         
-                        // CHUYỂN HƯỚNG TRỰC TIẾP LÚC CHẠM TAY
-                        btn.onclick = () => {
-                            document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang tải tập " + (index + 1) + "...</div>";
-                            window.location.href = processLink(link);
-                        };
+                        btn.onclick = () => playVideo(link);
                         container.appendChild(btn);
                     }
                 });
@@ -118,7 +167,7 @@
             document.getElementById("status").innerText = "⚠️ Lỗi xử lý dữ liệu!";
         }
 
-        // Chặn F12 / Menu phải
+        // Chặn copy/inspect bậy bạ
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
