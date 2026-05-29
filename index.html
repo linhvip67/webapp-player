@@ -57,18 +57,20 @@
                 btn.className = "ep-btn";
                 btn.innerText = "Tập " + (idx + 1);
                 
-                // 🔥 LOGIC MỚI: Biến tập phim thành Phim Lẻ
+                // MẸO CỐT LÕI: Biến tập phim thành "Phim lẻ" 
                 btn.onclick = () => {
                     document.getElementById("ui-container").style.display = "none";
-                    document.getElementById("loading").innerHTML = "<h3>🍿 Đang mở tập phim...</h3>";
+                    document.getElementById("loading").innerHTML = "<h3>🍿 Đang tải phim...</h3>";
                     document.getElementById("loading").style.display = "block";
                     
-                    // Mã hóa URL của đúng tập này (giống hệt code TeleBot đẩy sang)
-                    const encodedSingleEp = btoa(unescape(encodeURIComponent(url.trim())));
+                    // Mã hóa riêng link của tập này
+                    let singleLinkEncoded = btoa(unescape(encodeURIComponent(url)));
                     
-                    // Gọi lại chính trang WebApp này, truyền link tập lẻ vào. 
-                    // Ở lần load kế tiếp, nó sẽ chạy vào logic "Phim Lẻ" -> Auto play mượt mà không nhảy app!
-                    window.location.replace(window.location.pathname + "?link=" + encodedSingleEp);
+                    // Lấy url gốc của WebApp (bỏ đi các params cũ)
+                    let currentUrlBase = window.location.href.split('?')[0];
+                    
+                    // Reload trang WebApp với 1 link duy nhất -> Kích hoạt cơ chế "Phim Lẻ" chặn nhảy app!
+                    window.location.replace(currentUrlBase + "?link=" + singleLinkEncoded);
                 };
                 epsGrid.appendChild(btn);
             });
@@ -93,7 +95,7 @@
             // LOGIC SỬA LỖI: NẾU LÀ PHIM LẺ (KHÔNG CÓ DẤU |)
             // ==========================================
             if (!decoded.includes("|") && !decoded.includes("||")) {
-                // Phim lẻ hoặc Tập lẻ vừa được nạp lại: Chuyển hướng thẳng luôn, điện thoại sẽ bỏ qua OneDrive
+                // Chuyển hướng thẳng luôn, bỏ qua Menu chọn tập!
                 window.location.replace(decoded.trim());
                 return;
             }
