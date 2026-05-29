@@ -13,34 +13,9 @@
         button:active { background-color: #444; }
         #status { margin-top: 50px; font-size: 18px; z-index: 10;}
         #content { position: relative; z-index: 10; }
-        
-        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG (CHỈ BẬT KHI CHỌN TẬP) */
-        #watermark {
-            position: fixed;
-            color: rgba(255, 255, 255, 0.15);
-            font-size: 20px;
-            font-weight: bold;
-            font-family: monospace;
-            pointer-events: none;
-            user-select: none;
-            z-index: 9999;
-            text-shadow: 1px 1px 2px #000;
-            animation: floatWatermark 25s infinite alternate ease-in-out;
-            display: none; /* Ẩn đi từ đầu cho gọn */
-        }
-
-        @keyframes floatWatermark {
-            0% { top: 5%; left: 5%; transform: rotate(-5deg); }
-            25% { top: 80%; left: 60%; transform: rotate(10deg); }
-            50% { top: 20%; left: 80%; transform: rotate(-10deg); }
-            75% { top: 70%; left: 10%; transform: rotate(5deg); }
-            100% { top: 40%; left: 40%; transform: rotate(0deg); }
-        }
     </style>
 </head>
 <body>
-    <div id="watermark">UID: Đang tải...</div>
-
     <div id="content">
         <div id="status">🍿 Đang kết nối máy chủ...</div>
     </div>
@@ -52,7 +27,7 @@
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
-            const uid = urlParams.get("uid") || "Unknown"; 
+            const uid = urlParams.get("uid") || "Unknown"; // Vẫn bắt UID để đẩy tiếp vào link (cho an toàn)
 
             if (!encodedLink) {
                 document.getElementById("status").innerText = "⚠️ Lỗi: Không tìm thấy dữ liệu phim!";
@@ -61,26 +36,17 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // ==========================================
-            // 1. KỊCH BẢN PHIM LẺ: CHẠY THẲNG KHÔNG NHẢY APP
-            // ==========================================
+            // 1. PHIM LẺ: Chuyển hướng ngay lập tức (Không click -> Không nhảy app)
             if (!decoded.includes("|")) {
-                // Tự động nhảy link luôn, không có sự kiện Click -> Điện thoại bỏ qua app OneDrive
                 window.location.replace(decoded.trim());
                 return;
             }
 
-            // ==========================================
-            // 2. KỊCH BẢN PHIM BỘ: DỰNG GIAO DIỆN CHỌN TẬP
-            // ==========================================
-            // Bật watermark lên để dọa
-            document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
-            document.getElementById("watermark").style.display = "block";
-
+            // 2. PHIM BỘ: Dựng giao diện chọn tập
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
-            // Format: Mùa 2 :: Link1 | Link2 || Mùa 1 :: Link3 | Link4
+            // Xử lý format có chia mùa (Mùa 1 :: link | link || Mùa 2 :: link | link)
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach(season => {
@@ -107,7 +73,7 @@
                     listObj.appendChild(container);
                 });
             } else {
-                // Format: Link1 | Link2 | Link3
+                // Xử lý format không chia mùa (link | link | link)
                 const container = document.createElement("div");
                 container.className = "ep-container";
                 
@@ -125,17 +91,15 @@
             }
         }
 
-        // HÀM CHUYỂN TRANG "LỪA" ĐIỆN THOẠI CHỐNG NHẢY APP
+        // HÀM CHUYỂN TRANG "LỪA" ĐIỆN THOẠI CHỐNG NHẢY APP ONEDRIVE
         function playEpisode(url, uid) {
-            // Tắt watermark cho mượt mắt khi xem
-            document.getElementById("watermark").style.display = "none";
             document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang mở tập phim...</div>";
             
             // Ép mã hóa riêng link của tập này
             const encodedEp = btoa(unescape(encodeURIComponent(url)));
             
-            // Reload lại đúng trang web này nhưng ngậm link phim lẻ
-            // Việc reload giúp reset lại hành vi, khi trang load lại nó sẽ tự lọt vào Kịch Bản Phim Lẻ bên trên!
+            // Reload lại chính trang web này nhưng ngậm duy nhất link phim lẻ
+            // Việc reload giúp tự động kích hoạt Kịch Bản Phim Lẻ bên trên!
             window.location.replace("?link=" + encodedEp + "&uid=" + uid);
         }
 
@@ -145,7 +109,7 @@
             document.getElementById("status").innerText = "⚠️ Lỗi xử lý dữ liệu!";
         }
 
-        // Chống F12 / Copy code
+        // Chống F12 / Copy code cho dân PC
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
