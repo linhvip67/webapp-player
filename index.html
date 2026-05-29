@@ -6,15 +6,15 @@
     <title>🍿 Đang tải phim...</title>
     <style>
         body { background-color: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; overflow: hidden;}
-        h3 { color: #f1c40f; margin-bottom: 20px; z-index: 10;}
-        h4 { color: #aaa; text-align: left; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 16px; z-index: 10;}
-        .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; z-index: 10;}
-        button { background-color: #1a1a1a; border: 1px solid #333; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33% - 10px); min-width: 80px; transition: 0.2s; z-index: 10;}
+        h3 { color: #f1c40f; margin-bottom: 20px; z-index: 10; position: relative;}
+        h4 { color: #aaa; text-align: left; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 16px; z-index: 10; position: relative;}
+        .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; z-index: 10; position: relative;}
+        button { background-color: #1a1a1a; border: 1px solid #333; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33% - 10px); min-width: 80px; transition: 0.2s; z-index: 10; position: relative;}
         button:active { background-color: #444; }
-        #status { margin-top: 50px; font-size: 18px; z-index: 10;}
-        #content { position: relative; z-index: 10; }
+        #status { margin-top: 50px; font-size: 18px; z-index: 10; position: relative;}
+        #content { position: relative; z-index: 10; width: 100%; height: 100%; }
         
-        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG CHỐNG RECORD MÀN HÌNH */
+        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG (CHỈ HIỂN THỊ Ở GIAO DIỆN CHỌN TẬP ĐỂ DỌA) */
         #watermark {
             position: fixed;
             color: rgba(255, 255, 255, 0.15);
@@ -39,6 +39,7 @@
 </head>
 <body>
     <div id="watermark">UID: Đang tải...</div>
+
     <div id="content">
         <div id="status">🍿 Đang kết nối máy chủ...</div>
     </div>
@@ -46,7 +47,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-        
+
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
@@ -61,13 +62,13 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // PHIM LẺ: Giữ nguyên logic gốc của bạn
+            // 1. PHIM LẺ: Vẫn giữ nguyên logic cũ, chạy mượt mà ngay trên trình duyệt
             if (!decoded.includes("|")) {
                 window.location.replace(decoded.trim());
                 return;
             }
 
-            // PHIM BỘ: Xử lý danh sách tập
+            // 2. PHIM BỘ: Xử lý giao diện chọn tập
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
@@ -91,10 +92,11 @@
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
                             btn.onclick = () => {
-                                // FIX LỖI Ở ĐÂY: Dùng encodeURIComponent bọc base64 để không bị vỡ link
-                                const base64Ep = btoa(unescape(encodeURIComponent(link)));
-                                const safeLink = encodeURIComponent(base64Ep);
-                                window.location.search = "?link=" + safeLink + "&uid=" + encodeURIComponent(uid);
+                                document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang mở phim...</div>";
+                                // MẸO CHỐNG NHẢY APP ONEDRIVE: Delay 500ms để ngắt User Gesture (hành vi click trực tiếp)
+                                setTimeout(() => {
+                                    window.location.replace(link);
+                                }, 500);
                             };
                             container.appendChild(btn);
                         }
@@ -112,10 +114,11 @@
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
                         btn.onclick = () => {
-                            // FIX LỖI Ở ĐÂY: Dùng encodeURIComponent bọc base64 để không bị vỡ link
-                            const base64Ep = btoa(unescape(encodeURIComponent(link)));
-                            const safeLink = encodeURIComponent(base64Ep);
-                            window.location.search = "?link=" + safeLink + "&uid=" + encodeURIComponent(uid);
+                            document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang mở phim...</div>";
+                            // MẸO CHỐNG NHẢY APP ONEDRIVE: Delay 500ms để ngắt User Gesture
+                            setTimeout(() => {
+                                window.location.replace(link);
+                            }, 500);
                         };
                         container.appendChild(btn);
                     }
