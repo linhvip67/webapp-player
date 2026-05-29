@@ -37,7 +37,7 @@
             100% { top: 40%; left: 40%; transform: rotate(0deg); }
         }
 
-        /* 🎥 Style cho Iframe player để không bị nhảy app */
+        /* 🎥 Khung player dành riêng cho phim bộ để chặn nhảy sang app OneDrive ngoài */
         .player-frame {
             position: fixed;
             top: 0;
@@ -45,7 +45,7 @@
             width: 100vw;
             height: 100vh;
             border: none;
-            z-index: 5; /* Nằm dưới watermark (9999) nhưng nằm trên nền */
+            z-index: 5;
             background-color: #000;
         }
     </style>
@@ -61,8 +61,8 @@
     <script>
         window.Telegram.WebApp.expand();
         
-        // Hàm phát video an toàn trong Iframe
-        function playVideo(url) {
+        // Hàm này chỉ gọi khi xem phim bộ để play trực tiếp trong iframe
+        function playVideoEmbedded(url) {
             document.getElementById("content").innerHTML = '<iframe class="player-frame" src="' + url + '" allowfullscreen allow="autoplay; fullscreen"></iframe>';
         }
 
@@ -81,13 +81,13 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // Nếu là phim lẻ (Không có ký tự phân tách |)
+            // 1. PHIM LẺ: Không chứa dấu phân tách | -> Giữ nguyên chuyển hướng gốc của bạn
             if (!decoded.includes("|")) {
-                playVideo(decoded.trim());
+                window.location.replace(decoded.trim());
                 return;
             }
 
-            // Nếu là phim bộ
+            // 2. PHIM BỘ: Có chứa dấu | -> Sử dụng giao diện chọn tập và nhúng iframe chặn nhảy app
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
@@ -110,7 +110,7 @@
                         if(link !== "") {
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
-                            btn.onclick = () => playVideo(link); // Thay vì replace, gọi iframe
+                            btn.onclick = () => playVideoEmbedded(link); // Gọi iframe phát tại chỗ
                             container.appendChild(btn);
                         }
                     });
@@ -126,7 +126,7 @@
                     if(link !== "") {
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
-                        btn.onclick = () => playVideo(link); // Thay vì replace, gọi iframe
+                        btn.onclick = () => playVideoEmbedded(link); // Gọi iframe phát tại chỗ
                         container.appendChild(btn);
                     }
                 });
