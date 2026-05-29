@@ -14,20 +14,21 @@
         #status { margin-top: 50px; font-size: 18px; z-index: 10;}
         #content { position: relative; z-index: 10; }
         
-        /* 🛡️ HỆ THỐNG WATERMARK CHỈ HIỆN LÚC CHỌN TẬP */
+        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG CHỐNG RECORD MÀN HÌNH */
         #watermark {
             position: fixed;
-            color: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.15); /* Độ mờ 15%, nhìn đủ thấy nhưng không khó chịu */
             font-size: 20px;
             font-weight: bold;
             font-family: monospace;
-            pointer-events: none;
+            pointer-events: none; /* Xuyên qua nút bấm, không gây lỗi cảm ứng */
             user-select: none;
             z-index: 9999;
             text-shadow: 1px 1px 2px #000;
             animation: floatWatermark 25s infinite alternate ease-in-out;
         }
 
+        /* Quỹ đạo bay lượn ngẫu nhiên khó bị che/crop */
         @keyframes floatWatermark {
             0% { top: 5%; left: 5%; transform: rotate(-5deg); }
             25% { top: 80%; left: 60%; transform: rotate(10deg); }
@@ -38,6 +39,7 @@
     </style>
 </head>
 <body>
+    <!-- CHÈN ID NGƯỜI DÙNG VÀO ĐÂY -->
     <div id="watermark">UID: Đang tải...</div>
 
     <div id="content">
@@ -51,8 +53,9 @@
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
-            const uid = urlParams.get("uid") || "Unknown"; 
+            const uid = urlParams.get("uid") || "Unknown"; // Bắt ID Telegram từ Bot truyền sang
 
+            // Hiển thị UID lên màn hình làm Watermark
             document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
 
             if (!encodedLink) {
@@ -62,13 +65,11 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // 1. PHIM LẺ: Chuyển hướng ngay lập tức (giống cũ, mượt mà không lỗi)
             if (!decoded.includes("|")) {
                 window.location.replace(decoded.trim());
                 return;
             }
 
-            // 2. PHIM BỘ: Dựng giao diện chọn tập
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
@@ -91,7 +92,7 @@
                         if(link !== "") {
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
-                            btn.onclick = () => playEpisode(link);
+                            btn.onclick = () => window.location.replace(link);
                             container.appendChild(btn);
                         }
                     });
@@ -107,25 +108,12 @@
                     if(link !== "") {
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
-                        btn.onclick = () => playEpisode(link);
+                        btn.onclick = () => window.location.replace(link);
                         container.appendChild(btn);
                     }
                 });
                 listObj.appendChild(container);
             }
-        }
-
-        // HÀM CHUYỂN HƯỚNG CHỐNG NHẢY APP & XÓA GIAO DIỆN HIỆN TẠI
-        function playEpisode(url) {
-            // Hiển thị trạng thái đang tải
-            document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang kết nối tập phim...</div>";
-            
-            // MẸO CỐT LÕI: Dùng setTimeout delay 300ms. 
-            // Bước này ngắt hành động "Click tay" của người dùng, ép trình duyệt xử lý nó
-            // giống y hệt như đang Auto-load phim lẻ -> Chặn điện thoại gọi App OneDrive.
-            setTimeout(() => {
-                window.location.replace(url);
-            }, 300);
         }
 
         try {
