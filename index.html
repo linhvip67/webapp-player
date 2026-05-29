@@ -57,20 +57,18 @@
                 btn.className = "ep-btn";
                 btn.innerText = "Tập " + (idx + 1);
                 
-                // MẸO CỐT LÕI: Biến tập phim thành "Phim lẻ" 
+                // KỊCH BẢN CHỐNG NHẢY APP CỰC MƯỢT
                 btn.onclick = () => {
                     document.getElementById("ui-container").style.display = "none";
                     document.getElementById("loading").innerHTML = "<h3>🍿 Đang tải phim...</h3>";
                     document.getElementById("loading").style.display = "block";
                     
-                    // Mã hóa riêng link của tập này
-                    let singleLinkEncoded = btoa(unescape(encodeURIComponent(url)));
+                    // Mã hóa lại link của đúng cái tập này
+                    let encodedEp = btoa(unescape(encodeURIComponent(url.trim())));
                     
-                    // Lấy url gốc của WebApp (bỏ đi các params cũ)
-                    let currentUrlBase = window.location.href.split('?')[0];
-                    
-                    // Reload trang WebApp với 1 link duy nhất -> Kích hoạt cơ chế "Phim Lẻ" chặn nhảy app!
-                    window.location.replace(currentUrlBase + "?link=" + singleLinkEncoded);
+                    // Load lại chính trang WebApp này, truyền link tập vào.
+                    // Trang tự load lại sẽ rơi vào kịch bản "Phim lẻ" bên dưới -> chặn nhảy app OneDrive.
+                    window.location.replace(window.location.pathname + "?link=" + encodedEp);
                 };
                 epsGrid.appendChild(btn);
             });
@@ -92,10 +90,10 @@
             }
 
             // ==========================================
-            // LOGIC SỬA LỖI: NẾU LÀ PHIM LẺ (KHÔNG CÓ DẤU |)
+            // LOGIC PHIM LẺ HOẶC SAU KHI ĐÃ BẤM CHỌN TẬP
             // ==========================================
             if (!decoded.includes("|") && !decoded.includes("||")) {
-                // Chuyển hướng thẳng luôn, bỏ qua Menu chọn tập!
+                // Tự động chuyển hướng không cần Click -> OS cho qua, xem mượt mà!
                 window.location.replace(decoded.trim());
                 return;
             }
