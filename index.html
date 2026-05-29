@@ -5,169 +5,189 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🍿 Xem Phim Subteam</title>
     <style>
-        body { background-color: #0b0f19; color: #fff; font-family: sans-serif; text-align: center; padding: 0; margin: 0; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
         
-        /* GIAO DIỆN CHỌN TẬP */
-        #ui-container { padding: 20px; overflow-y: auto; height: 100vh; box-sizing: border-box; }
-        h3 { color: #f1c40f; margin-bottom: 20px; text-transform: uppercase; }
-        h4 { color: #94a3b8; text-align: left; border-bottom: 1px solid #2a2e39; padding-bottom: 8px; margin-top: 25px; font-size: 16px; }
-        .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-        button { background-color: #1c212e; border: 1px solid #2a2e39; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33.33% - 10px); min-width: 80px; font-weight: bold; transition: 0.2s;}
-        button:active { background-color: #e50914; border-color: #e50914; transform: scale(0.95);}
-        #status { margin-top: 50px; font-size: 18px; color: #94a3b8;}
-        
-        /* TRÌNH PHÁT NHÚNG (IFRAME) - Ẩn link gốc */
-        #player-container { display: none; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; background: #000; z-index: 100; }
+        /* 🎬 KHUNG PHÁT VIDEO CHUẨN (TỈ LỆ 16:9) */
+        .video-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #2a2e39;}
         iframe { width: 100%; height: 100%; border: none; outline: none; }
         
-        /* NÚT QUAY LẠI CHỌN TẬP */
-        #back-btn { position: fixed; top: 15px; left: 15px; background: rgba(0,0,0,0.6); color: white; border: 1px solid #444; padding: 8px 15px; border-radius: 20px; z-index: 999; cursor: pointer; font-weight: bold; backdrop-filter: blur(5px); }
+        #error-msg { text-align: center; padding: 20px; display: none; color: #ff4d4f; font-weight: bold;}
+
+        /* 📋 KHUNG CHỌN TẬP PHIM BÊN DƯỚI */
+        .controls-container { padding: 20px; display: none; }
+        h3 { color: #f1c40f; margin: 0 0 15px 0; text-transform: uppercase; font-size: 18px; text-align: left;}
         
-        /* 🛡️ WATERMARK UID CHỐNG QUAY MÀN HÌNH */
+        /* Tab Mùa (Nếu có) */
+        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; border-bottom: 1px solid #2a2e39; margin-bottom: 15px; }
+        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 18px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
+        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
+
+        /* Grid Nút Tập phim */
+        .episodes-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 12px; border-radius: 8px; cursor: pointer; text-align: center; font-size: 14px; flex: 1 1 calc(25% - 10px); box-sizing: border-box; min-width: 70px; font-weight: bold; transition: 0.2s;}
+        .ep-btn:active { transform: scale(0.95); }
+        .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; font-weight: bold; box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);}
+        
+        /* 🛡️ WATERMARK BẤT TỬ ĐÈ LÊN IFRAME */
         #watermark {
-            position: fixed;
-            color: rgba(255, 255, 255, 0.2);
-            font-size: 18px;
+            position: absolute; /* Khóa chặt trong khung video */
+            color: rgba(255, 255, 255, 0.25); /* Độ mờ 25% */
+            font-size: 16px;
             font-weight: bold;
             font-family: monospace;
-            pointer-events: none; /* Bỏ qua tương tác tay, không gây kẹt màn hình */
+            pointer-events: none; /* Khách bấm xuyên qua chữ, không ảnh hưởng thao tác play/pause */
             user-select: none;
             z-index: 9999;
-            text-shadow: 1px 1px 2px #000;
-            animation: floatWatermark 20s infinite alternate ease-in-out;
-            display: none;
+            text-shadow: 1px 1px 3px #000;
+            animation: floatWatermark 18s infinite alternate ease-in-out;
         }
 
         @keyframes floatWatermark {
-            0% { top: 10%; left: 5%; transform: rotate(-5deg); }
-            25% { top: 80%; left: 60%; transform: rotate(10deg); }
-            50% { top: 20%; left: 80%; transform: rotate(-10deg); }
-            75% { top: 70%; left: 10%; transform: rotate(5deg); }
-            100% { top: 40%; left: 40%; transform: rotate(0deg); }
+            0% { top: 5%; left: 5%; transform: rotate(-5deg); }
+            25% { top: 75%; left: 60%; transform: rotate(10deg); }
+            50% { top: 15%; left: 70%; transform: rotate(-10deg); }
+            75% { top: 80%; left: 10%; transform: rotate(5deg); }
+            100% { top: 40%; left: 35%; transform: rotate(0deg); }
         }
+
+        ::-webkit-scrollbar { height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="ui-container">
-        <div id="status">Đang nạp dữ liệu...</div>
-    </div>
 
-    <div id="player-container">
-        <button id="back-btn" onclick="goBack()">🔙 Đổi tập</button>
+    <div class="video-container" id="vid-container">
+        <div id="watermark">UID: Đang tải...</div>
+        
         <iframe id="video-frame" src="" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
     </div>
+    
+    <div id="error-msg">⚠️ Lỗi: Không thể kết nối dữ liệu phim!</div>
 
-    <div id="watermark">UID: Đang tải...</div>
+    <div class="controls-container" id="controls-ui">
+        <div class="season-tabs" id="season-tabs"></div>
+        <div class="episodes-grid" id="episodes-grid"></div>
+    </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        window.Telegram.WebApp.expand();
-        
-        // Nhận ID Telegram từ Bot để gán vào Watermark
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Nạp UID của khách làm Watermark
         const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get("uid") || "Ẩn_Danh";
+        const uid = urlParams.get("uid") || "Ẩn Danh";
         document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
 
-        // 🛑 THUẬT TOÁN ÉP NHÚNG ONEDRIVE BUSINESS
-        function processEmbedLink(url) {
-            let finalUrl = url.trim();
-            if (finalUrl.includes("sharepoint.com") || finalUrl.includes("1drv.ms")) {
-                // Thêm tham số bắt buộc để OneDrive Business cho phép iframe
-                if (!finalUrl.includes("action=embedview")) {
-                    finalUrl += (finalUrl.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+        let seriesData = [];
+
+        // Trích xuất link nếu admin copy nhầm nguyên cái <iframe...> vào sheet
+        function cleanEmbedUrl(url) {
+            let cleanUrl = url.trim();
+            if (cleanUrl.toLowerCase().startsWith("<iframe")) {
+                const match = cleanUrl.match(/src=["'](.*?)["']/);
+                if (match && match[1]) {
+                    cleanUrl = match[1];
                 }
             }
-            return finalUrl;
+            return cleanUrl;
         }
 
-        // Kích hoạt Iframe
-        function playVideo(url) {
-            document.getElementById("ui-container").style.display = "none";
-            document.getElementById("player-container").style.display = "block";
-            document.getElementById("watermark").style.display = "block"; // Bật khiên chống quay lén
-            document.getElementById("video-frame").src = processEmbedLink(url);
+        // Đổi tập phim trên Iframe
+        function playEpisode(url, epBtn) {
+            const iframe = document.getElementById("video-frame");
+            
+            // Xử lý link sạch sẽ trước khi đưa vào iframe
+            iframe.src = cleanEmbedUrl(url);
+
+            // Đổi màu nút tập đang chọn
+            document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
+            if(epBtn) epBtn.classList.add('playing');
+            
+            // Cuộn mượt lên trên cùng (chỗ có video) khi bấm đổi tập
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Tắt Iframe để về danh sách tập
-        function goBack() {
-            document.getElementById("video-frame").src = ""; // Cắt luồng video
-            document.getElementById("player-container").style.display = "none";
-            document.getElementById("watermark").style.display = "none";
-            document.getElementById("ui-container").style.display = "block";
+        // Tạo danh sách nút bấm tập phim
+        function renderEpisodes(seasonIndex) {
+            const epsGrid = document.getElementById("episodes-grid");
+            epsGrid.innerHTML = ""; 
+
+            document.querySelectorAll('.season-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === seasonIndex);
+            });
+
+            const episodes = seriesData[seasonIndex].episodes;
+            episodes.forEach((url, idx) => {
+                const btn = document.createElement("div");
+                btn.className = "ep-btn";
+                btn.innerText = "Tập " + (idx + 1);
+                btn.onclick = () => playEpisode(url, btn);
+                epsGrid.appendChild(btn);
+            });
         }
 
-        function init() {
+        function initPlayer() {
             const encodedLink = urlParams.get("link");
-            if (!encodedLink) {
-                document.getElementById("status").innerText = "⚠️ Lỗi: Không tìm thấy dữ liệu phim!";
-                return;
-            }
+            if (!encodedLink) throw new Error("No link");
 
-            const decoded = decodeURIComponent(escape(atob(encodedLink)));
-
-            // TRƯỜNG HỢP 1: PHIM LẺ -> Chạy thẳng vào Iframe
-            if (!decoded.includes("|")) {
-                playVideo(decoded);
-                return;
-            }
-
-            // TRƯỜNG HỢP 2: PHIM BỘ -> Dựng danh sách nút bấm
-            document.getElementById("ui-container").innerHTML = "<h3>🎬 Danh sách Tập</h3><div id='list'></div>";
-            const listObj = document.getElementById("list");
+            const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
             if (decoded.includes("||")) {
-                const seasons = decoded.split("||");
-                seasons.forEach(season => {
-                    const parts = season.split("::");
-                    const sName = parts.length > 1 ? parts[0].trim() : "Phần phim";
-                    const eps = (parts.length > 1 ? parts[1] : parts[0]).split("|");
-
-                    const heading = document.createElement("h4");
-                    heading.innerText = sName;
-                    listObj.appendChild(heading);
-
-                    const container = document.createElement("div");
-                    container.className = "ep-container";
+                const seasonParts = decoded.split("||");
+                seasonParts.forEach((part, idx) => {
+                    let sName = "Phần " + (idx + 1);
+                    let sLinks = part;
                     
-                    eps.forEach((ep, index) => {
-                        const link = ep.trim();
-                        if(link !== "") {
-                            const btn = document.createElement("button");
-                            btn.innerText = "Tập " + (index + 1);
-                            
-                            // Ấn phát là gọi hàm Iframe, không nhảy link
-                            btn.onclick = () => playVideo(link);
-                            container.appendChild(btn);
-                        }
-                    });
-                    listObj.appendChild(container);
-                });
-            } else {
-                const container = document.createElement("div");
-                container.className = "ep-container";
-                
-                const eps = decoded.split("|");
-                eps.forEach((ep, index) => {
-                    const link = ep.trim();
-                    if(link !== "") {
-                        const btn = document.createElement("button");
-                        btn.innerText = "Tập " + (index + 1);
-                        
-                        btn.onclick = () => playVideo(link);
-                        container.appendChild(btn);
+                    if (part.includes("::")) {
+                        const splitIdx = part.indexOf("::");
+                        sName = part.substring(0, splitIdx).trim();
+                        sLinks = part.substring(splitIdx + 2);
                     }
+                    seriesData.push({ name: sName, episodes: sLinks.split("|").map(l => l.trim()).filter(l => l) });
                 });
-                listObj.appendChild(container);
+            } else if (decoded.includes("|")) {
+                seriesData.push({ name: "Danh sách Tập", episodes: decoded.split("|").map(l => l.trim()).filter(l => l) });
+            } else {
+                seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
+            }
+
+            if (seriesData.length > 0) {
+                if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
+                    document.getElementById("controls-ui").style.display = "block";
+                    
+                    const sTabs = document.getElementById("season-tabs");
+                    if (seriesData.length > 1) {
+                        seriesData.forEach((season, idx) => {
+                            const btn = document.createElement("div");
+                            btn.className = "season-btn";
+                            btn.innerText = season.name;
+                            btn.onclick = () => renderEpisodes(idx);
+                            sTabs.appendChild(btn);
+                        });
+                    } else {
+                        sTabs.style.display = "none";
+                    }
+                    
+                    // Khởi tạo mùa 1 và tập 1
+                    renderEpisodes(0);
+                    const firstBtn = document.querySelector('.ep-btn');
+                    playEpisode(seriesData[0].episodes[0], firstBtn);
+                } else {
+                    // Nếu là phim lẻ
+                    playEpisode(seriesData[0].episodes[0]);
+                }
             }
         }
 
         try {
-            init();
+            initPlayer();
         } catch (e) {
-            document.getElementById("status").innerText = "⚠️ Lỗi xử lý dữ liệu!";
+            document.getElementById("error-msg").style.display = "block";
+            document.getElementById("vid-container").style.display = "none";
         }
 
-        // Chặn copy/inspect bậy bạ
+        // Chặn inspect F12 và chuột phải
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
