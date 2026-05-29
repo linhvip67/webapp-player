@@ -32,15 +32,12 @@
 </head>
 <body>
     <div class="video-container" id="vid-container">
-        <!-- Khiên chặn tải, chặn PIP, chặn F12 -->
         <video id="player" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
-            <source id="video-src" src="" type="video/mp4" />
         </video>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không thể phân tích dữ liệu phim!</div>
 
-    <!-- UI Các Nút Chọn Tập -->
     <div class="controls-container" id="controls-ui">
         <div class="season-tabs" id="season-tabs"></div>
         <div class="episodes-grid" id="episodes-grid"></div>
@@ -51,16 +48,31 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // 🛑 QUAN TRỌNG: ĐIỀN ĐƯỜNG LINK CLOUDFLARE WORKER CỦA BẠN VÀO ĐÂY
+        // Ví dụ: "https://xemphim.subteam.workers.dev"
+        const CLOUDFLARE_WORKER_DOMAIN = "https://az5subteam.linhvip67.workers.dev"; 
+
         let seriesData = [];
 
-        // Hàm đổi tập phim mượt mà (Không tải lại trang)
+        // Hàm đổi tập phim mượt mà qua trạm Cloudflare
         function playEpisode(url, epBtn) {
-            const videoSrc = document.getElementById("video-src");
             const player = document.getElementById("player");
             
-            videoSrc.src = url;
+            let finalUrl = url.trim();
+            
+            // THUẬT TOÁN RỬA LINK: Đánh lừa điện thoại không gọi App OneDrive
+            if (finalUrl.includes("sharepoint.com") || finalUrl.includes("1drv.ms")) {
+                // Mã hóa Base64 link gốc và bọc qua Cloudflare
+                finalUrl = CLOUDFLARE_WORKER_DOMAIN + "/stream-video?file=" + btoa(finalUrl);
+            }
+            
+            player.src = finalUrl;
             player.load();
-            player.play().catch(e => console.log("Chờ người dùng bấm Play"));
+            
+            let playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => console.log("HĐH chặn Autoplay, chờ người dùng tự bấm Play"));
+            }
 
             // Highlight nút đang chiếu
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
@@ -70,7 +82,7 @@
         // Hàm render danh sách tập theo Mùa được chọn
         function renderEpisodes(seasonIndex) {
             const epsGrid = document.getElementById("episodes-grid");
-            epsGrid.innerHTML = ""; // Xóa các tập cũ
+            epsGrid.innerHTML = ""; 
 
             // Highlight tab Mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
@@ -92,7 +104,6 @@
             const encodedLink = new URLSearchParams(window.location.search).get("link");
             if (!encodedLink) throw new Error("No link");
 
-            // Decode chuẩn Unicode để đọc được Tiếng Việt (Mùa 1, Phần 2...)
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
             if (decoded.includes("||")) {
@@ -129,12 +140,10 @@
 
             // DỰNG GIAO DIỆN
             if (seriesData.length > 0) {
-                // Nếu là Phim Bộ (có nhiều tập hoặc nhiều mùa)
                 if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
                     document.getElementById("controls-ui").style.display = "block";
                     
                     const sTabs = document.getElementById("season-tabs");
-                    // Chỉ hiện Tab Mùa nếu có từ 2 Mùa trở lên
                     if (seriesData.length > 1) {
                         seriesData.forEach((season, idx) => {
                             const btn = document.createElement("div");
@@ -150,11 +159,9 @@
                     // Render Mùa 1 làm mặc định
                     renderEpisodes(0);
                     
-                    // Chiếu Tập 1 ngay lập tức
                     const firstEpBtn = document.querySelector('.ep-btn');
                     playEpisode(seriesData[0].episodes[0], firstEpBtn);
                 } else {
-                    // Nếu là Phim Lẻ -> Ẩn toàn bộ UI tập, chiếu thẳng phim
                     playEpisode(seriesData[0].episodes[0]);
                 }
             }
