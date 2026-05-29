@@ -3,109 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍿 Chọn Tập Phim</title>
+    <title>🍿 Xem Phim Subteam</title>
     <style>
-        body { background-color: #0b0f19; color: white; font-family: sans-serif; padding: 20px; text-align: center; margin: 0;}
-        h2 { color: #e50914; margin-bottom: 20px;}
-        
-        /* Loading Text */
-        #loading { margin-top: 50px; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
+        /* Khung Video */
+        .video-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative;}
+        video { width: 100%; height: 100%; outline: none; }
+        #error-msg { text-align: center; padding: 20px; display: none; color: #ff4d4f; font-weight: bold;}
 
-        /* Khung chọn Mùa */
-        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; justify-content: center;}
-        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 10px 20px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
-        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914;}
+        /* Khung chọn Mùa & Tập (Chuẩn UI Netflix) */
+        .controls-container { padding: 15px; display: none; }
         
-        /* Grid Chọn Tập */
-        .episodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 15px 5px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: block; box-sizing: border-box; transition: 0.2s;}
-        .ep-btn:active { transform: scale(0.95); background: #e50914;}
-
-        /* Cuộn ngang */
+        /* Tab Mùa */
+        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; border-bottom: 1px solid #2a2e39; margin-bottom: 15px; }
+        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 18px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
+        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
+        
+        /* Grid Tập */
+        .episodes-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 12px; border-radius: 8px; cursor: pointer; text-align: center; font-size: 14px; flex: 1 1 calc(20% - 10px); box-sizing: border-box; min-width: 65px; transition: 0.2s;}
+        .ep-btn:active { transform: scale(0.95); }
+        .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; font-weight: bold;}
+        
+        /* Tùy chỉnh thanh cuộn ngang mượt mà */
         ::-webkit-scrollbar { height: 4px; }
         ::-webkit-scrollbar-thumb { background: #e50914; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="loading"><h3>🍿 Đang kết nối máy chủ phim...</h3></div>
+    <div class="video-container" id="vid-container">
+        <!-- Khiên chặn tải, chặn PIP, chặn F12 -->
+        <video id="player" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
+            <source id="video-src" src="" type="video/mp4" />
+        </video>
+    </div>
     
-    <div id="ui-container" style="display:none;">
-        <h2>🎬 CHỌN TẬP PHIM</h2>
+    <div id="error-msg">⚠️ Lỗi: Không thể phân tích dữ liệu phim!</div>
+
+    <!-- UI Các Nút Chọn Tập -->
+    <div class="controls-container" id="controls-ui">
         <div class="season-tabs" id="season-tabs"></div>
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-        window.Telegram.WebApp.expand();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
         let seriesData = [];
 
-        // Hàm render danh sách tập theo Mùa
+        // Hàm đổi tập phim mượt mà (Không tải lại trang)
+        function playEpisode(url, epBtn) {
+            const videoSrc = document.getElementById("video-src");
+            const player = document.getElementById("player");
+            
+            videoSrc.src = url;
+            player.load();
+            player.play().catch(e => console.log("Chờ người dùng bấm Play"));
+
+            // Highlight nút đang chiếu
+            document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
+            if(epBtn) epBtn.classList.add('playing');
+        }
+
+        // Hàm render danh sách tập theo Mùa được chọn
         function renderEpisodes(seasonIndex) {
             const epsGrid = document.getElementById("episodes-grid");
-            epsGrid.innerHTML = ""; 
+            epsGrid.innerHTML = ""; // Xóa các tập cũ
 
-            // Cập nhật tab active
+            // Highlight tab Mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIndex);
             });
 
-            // Lấy danh sách link của Mùa được chọn
             const episodes = seriesData[seasonIndex].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
                 btn.className = "ep-btn";
                 btn.innerText = "Tập " + (idx + 1);
-                
-                // KỊCH BẢN CHỐNG NHẢY APP CỰC MƯỢT
-                btn.onclick = () => {
-                    document.getElementById("ui-container").style.display = "none";
-                    document.getElementById("loading").innerHTML = "<h3>🍿 Đang tải phim...</h3>";
-                    document.getElementById("loading").style.display = "block";
-                    
-                    // Mã hóa lại link của đúng cái tập này
-                    let encodedEp = btoa(unescape(encodeURIComponent(url.trim())));
-                    
-                    // Load lại chính trang WebApp này, truyền link tập vào.
-                    // Trang tự load lại sẽ rơi vào kịch bản "Phim lẻ" bên dưới -> chặn nhảy app OneDrive.
-                    window.location.replace(window.location.pathname + "?link=" + encodedEp);
-                };
+                btn.onclick = () => playEpisode(url, btn);
                 epsGrid.appendChild(btn);
             });
         }
 
-        function initApp() {
+        // Hàm phân tích Dữ liệu và dựng Giao diện
+        function initPlayer() {
             const encodedLink = new URLSearchParams(window.location.search).get("link");
-            if (!encodedLink) {
-                document.getElementById("loading").innerHTML = "⚠️ Lỗi: Không có dữ liệu phim!";
-                return;
-            }
+            if (!encodedLink) throw new Error("No link");
 
-            // Giải mã an toàn để không lỗi font Tiếng Việt
-            let decoded = "";
-            try { 
-                decoded = decodeURIComponent(escape(atob(encodedLink))); 
-            } catch(e) { 
-                decoded = atob(encodedLink); 
-            }
-
-            // ==========================================
-            // LOGIC PHIM LẺ HOẶC SAU KHI ĐÃ BẤM CHỌN TẬP
-            // ==========================================
-            if (!decoded.includes("|") && !decoded.includes("||")) {
-                // Tự động chuyển hướng không cần Click -> OS cho qua, xem mượt mà!
-                window.location.replace(decoded.trim());
-                return;
-            }
-
-            // ==========================================
-            // LOGIC PHIM BỘ: DỰNG GIAO DIỆN MENU
-            // ==========================================
-            document.getElementById("loading").style.display = "none";
-            document.getElementById("ui-container").style.display = "block";
+            // Decode chuẩn Unicode để đọc được Tiếng Việt (Mùa 1, Phần 2...)
+            const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
             if (decoded.includes("||")) {
-                // Kiểu: Có phân Mùa/Phần
+                // KIỂU 3: CÓ NHIỀU MÙA
                 const seasonParts = decoded.split("||");
                 seasonParts.forEach((part, idx) => {
                     let sName = "Phần " + (idx + 1);
@@ -122,40 +113,63 @@
                         episodes: sLinks.split("|").map(l => l.trim()).filter(l => l)
                     });
                 });
-            } else {
-                // Kiểu: Chỉ có danh sách tập (không có Mùa)
+            } else if (decoded.includes("|")) {
+                // KIỂU 2: CHỈ CÓ 1 MÙA (NHIỀU TẬP)
                 seriesData.push({
                     name: "Danh sách Tập",
                     episodes: decoded.split("|").map(l => l.trim()).filter(l => l)
                 });
+            } else {
+                // KIỂU 1: PHIM LẺ
+                seriesData.push({
+                    name: "Phim Lẻ",
+                    episodes: [decoded.trim()]
+                });
             }
 
-            const sTabs = document.getElementById("season-tabs");
-            // Render Tab Mùa nếu có nhiều hơn 1 mùa
-            if (seriesData.length > 1) {
-                seriesData.forEach((season, idx) => {
-                    const btn = document.createElement("div");
-                    btn.className = "season-btn";
-                    btn.innerText = season.name;
-                    btn.onclick = () => renderEpisodes(idx);
-                    sTabs.appendChild(btn);
-                });
-            } else {
-                sTabs.style.display = "none";
+            // DỰNG GIAO DIỆN
+            if (seriesData.length > 0) {
+                // Nếu là Phim Bộ (có nhiều tập hoặc nhiều mùa)
+                if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
+                    document.getElementById("controls-ui").style.display = "block";
+                    
+                    const sTabs = document.getElementById("season-tabs");
+                    // Chỉ hiện Tab Mùa nếu có từ 2 Mùa trở lên
+                    if (seriesData.length > 1) {
+                        seriesData.forEach((season, idx) => {
+                            const btn = document.createElement("div");
+                            btn.className = "season-btn";
+                            btn.innerText = season.name;
+                            btn.onclick = () => renderEpisodes(idx);
+                            sTabs.appendChild(btn);
+                        });
+                    } else {
+                        sTabs.style.display = "none";
+                    }
+                    
+                    // Render Mùa 1 làm mặc định
+                    renderEpisodes(0);
+                    
+                    // Chiếu Tập 1 ngay lập tức
+                    const firstEpBtn = document.querySelector('.ep-btn');
+                    playEpisode(seriesData[0].episodes[0], firstEpBtn);
+                } else {
+                    // Nếu là Phim Lẻ -> Ẩn toàn bộ UI tập, chiếu thẳng phim
+                    playEpisode(seriesData[0].episodes[0]);
+                }
             }
-            
-            // Hiển thị danh sách tập của Mùa đầu tiên
-            renderEpisodes(0);
         }
 
         try {
-            initApp();
-        } catch(e) {
-            document.getElementById("loading").innerHTML = "⚠️ Lỗi hệ thống: " + e.message;
+            initPlayer();
+        } catch (e) {
+            document.getElementById("error-msg").style.display = "block";
+            document.getElementById("vid-container").style.display = "none";
         }
 
-        // Lớp bảo vệ UX cơ bản
+        // BẢO MẬT: Chống F12, vô hiệu hóa menu chuột phải
         document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
 </body>
 </html>
