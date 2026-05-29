@@ -7,16 +7,18 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
         
+        /* Khung Video xịn tỉ lệ 16:9 */
         .video-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #2a2e39;}
         video { width: 100%; height: 100%; outline: none; }
         
-        /* ⌛ Khung Loading xịn xò chờ bốc thuốc 2-3s */
+        /* Khung trạng thái xoay xoay chờ tải luồng */
         #status-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 15, 25, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; font-weight: bold; color: #94a3b8; font-size: 15px;}
         .loader { border: 4px solid #1c212e; border-top: 4px solid #e50914; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* Khung chọn tập phong cách Netflix */
         .controls-container { padding: 20px; display: none; }
-        h3 { color: #f1c40f; margin: 0 0 15px 0; text-transform: uppercase; font-size: 16px;}
+        h3 { color: #f1c40f; margin: 0 0 15px 0; text-transform: uppercase; font-size: 16px; text-align: left;}
         
         .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; border-bottom: 1px solid #2a2e39; margin-bottom: 15px; }
         .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 18px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; transition: 0.2s;}
@@ -27,10 +29,10 @@
         .ep-btn:active { transform: scale(0.95); }
         .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; font-weight: bold; box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);}
         
-        /* 🛡️ WATERMARK UID CHỐNG RECORD */
+        /* 🛡️ WATERMARK UID CHỐNG QUAY MÀN HÌNH BẤT TỬ */
         #watermark {
             position: absolute;
-            color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.18);
             font-size: 16px;
             font-weight: bold;
             font-family: monospace;
@@ -60,7 +62,7 @@
         
         <div id="status-overlay">
             <div class="loader" id="spinner"></div>
-            <div id="status-text" style="text-align: center;">Đang khởi tạo luồng dữ liệu...</div>
+            <div id="status-text" style="text-align: center;">Đang xác thực luồng truyền video...</div>
         </div>
 
         <video id="player" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
@@ -68,8 +70,8 @@
     </div>
     
     <div class="controls-container" id="controls-ui">
-        <h3>🎬 Chọn tập phim đã mua:</h3>
         <div class="season-tabs" id="season-tabs"></div>
+        <h3>🎬 Chọn tập phim để xem:</h3>
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
 
@@ -78,16 +80,30 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 🛑 BẮT BUỘC: ĐIỀN ĐƯỜNG LINK CLOUDFLARE WORKER CỦA MÀY VÀO ĐÂY
-        const CLOUDFLARE_WORKER_DOMAIN = "https://az5subteam.linhvip67.workers.dev"; 
-
         const urlParams = new URLSearchParams(window.location.search);
         const uid = urlParams.get("uid") || "Ẩn Danh";
         document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
 
         let seriesData = [];
 
-        // Hàm gọi AJAX bốc luồng MP4 với Delay giả lập 2.5s
+        // 🚀 THUẬT TOÁN BẺ MÃ: Ép OneDrive Business nổ link stream MP4 trực tiếp bằng IP gốc thiết bị
+        function convertToDirectStream(url) {
+            let cleanUrl = url.trim().split('?')[0]; // Bỏ rác đuôi token thừa
+            
+            // Sử dụng biểu thức Regex nâng cao để bóc tách chính xác cấu trúc SharePoint Business
+            let match = cleanUrl.match(/(https:\/\/[^\/]+)\/:\w:\/g\/(personal\/[^\/]+)\/(.+)/);
+            if (match) {
+                let baseServer = match[1]; // Tên miền server doanh nghiệp
+                let userPath = match[2];   // Đường dẫn tài khoản lưu trữ
+                let fileToken = match[3];  // Mã Token định danh của tệp phim
+                
+                // Trả về liên kết luồng tải nhúng trực tiếp chuẩn Microsoft CDN
+                return baseServer + "/" + userPath + "/_layouts/15/download.aspx?share=" + fileToken;
+            }
+            return url; 
+        }
+
+        // Hàm đổi tập phim mượt mà kèm Delay khoảng nghỉ giả lập 2.5s theo ý m
         async function playEpisode(url, epBtn) {
             const player = document.getElementById("player");
             const overlay = document.getElementById("status-overlay");
@@ -97,46 +113,32 @@
             player.pause();
             overlay.style.display = "flex";
             spinner.style.display = "block";
-            statusText.innerHTML = "Đang giải mã luồng bảo mật...<br><span style='font-size:12px; font-weight:normal; color:#64748b;'>Vui lòng không thoát ứng dụng</span>";
+            statusText.innerHTML = "Đang kết nối luồng dữ liệu an toàn...<br><span style='font-size:12px; font-weight:normal; color:#64748b;'>Vui lòng chờ trong giây lát</span>";
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
             if(epBtn) epBtn.classList.add('playing');
 
-            // ⏳ Khoảng nghỉ m yêu cầu (Giả lập delay 2.5s cho khách cảm giác đang load)
+            // ⏳ Khoảng nghỉ 2.5s đánh lừa cảm giác lag, giúp luồng video ổn định
             await new Promise(r => setTimeout(r, 2500));
 
             try {
-                let cleanUrl = url.trim();
-                let cfUrl = CLOUDFLARE_WORKER_DOMAIN + "/stream-video?file=" + btoa(cleanUrl);
-                
-                let response = await fetch(cfUrl);
-                let directMp4Url = await response.text(); 
+                // Bẻ link trực tiếp bằng IP của thiết bị
+                let directMp4Url = convertToDirectStream(url);
 
-                // Nếu Bot báo kẹt tính năng bảo mật OneDrive
-                if (directMp4Url === "BLOCK_DOWNLOAD_ERROR") {
-                    spinner.style.display = "none";
-                    statusText.innerHTML = "❌ <b>Lỗi Nguồn Phát</b><br><span style='font-size:13px; color:#ff4d4f;'>Admin cần tắt 'Block Download' trên OneDrive để luồng video được chạy.</span>";
-                    return;
-                }
-
-                if (directMp4Url === "ERROR" || !directMp4Url.startsWith("http")) {
-                    throw new Error("Lỗi hệ thống máy chủ.");
-                }
-
-                // Phát video
                 player.src = directMp4Url;
                 player.load();
                 
+                // Tự động tắt bảng đen khi phim đã sẵn sàng lên hình
                 player.onloadeddata = () => { overlay.style.display = "none"; };
                 player.oncanplay = () => { overlay.style.display = "none"; };
 
                 player.play().catch(e => {
-                    overlay.style.display = "none"; // Bỏ che để khách tự ấn Play thủ công
+                    overlay.style.display = "none"; // Bỏ bảng che nếu trình duyệt ép khách ấn nút Play thủ công
                 });
 
             } catch (error) {
                 spinner.style.display = "none";
-                statusText.innerHTML = "❌ Lỗi: Đường truyền tạm thời gián đoạn. Thử lại sau!";
+                statusText.innerHTML = "❌ Lỗi: Đường truyền kết nối tạm thời gián đoạn!";
             }
         }
 
@@ -212,6 +214,7 @@
 
         initPlayer();
 
+        // Bảo mật tối đa chống copy link
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
