@@ -6,13 +6,13 @@
     <title>🍿 Đang tải phim...</title>
     <style>
         body { background-color: #000; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; overflow: hidden;}
-        h3 { color: #f1c40f; margin-bottom: 20px; z-index: 10;}
-        h4 { color: #aaa; text-align: left; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 16px; z-index: 10;}
-        .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; z-index: 10;}
-        button { background-color: #1a1a1a; border: 1px solid #333; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33% - 10px); min-width: 80px; transition: 0.2s; z-index: 10;}
+        h3 { color: #f1c40f; margin-bottom: 20px; z-index: 10; position: relative;}
+        h4 { color: #aaa; text-align: left; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; font-size: 16px; z-index: 10; position: relative;}
+        .ep-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; z-index: 10; position: relative;}
+        button { background-color: #1a1a1a; border: 1px solid #333; color: white; padding: 15px; border-radius: 8px; font-size: 15px; cursor: pointer; flex: 1 1 calc(33% - 10px); min-width: 80px; transition: 0.2s; z-index: 10; position: relative;}
         button:active { background-color: #444; }
-        #status { margin-top: 50px; font-size: 18px; z-index: 10;}
-        #content { position: relative; z-index: 10; }
+        #status { margin-top: 50px; font-size: 18px; z-index: 10; position: relative;}
+        #content { position: relative; z-index: 10; width: 100%; height: 100%; }
         
         /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG CHỐNG RECORD MÀN HÌNH */
         #watermark {
@@ -36,10 +36,21 @@
             75% { top: 70%; left: 10%; transform: rotate(5deg); }
             100% { top: 40%; left: 40%; transform: rotate(0deg); }
         }
+
+        /* 🎥 Style cho Iframe player để không bị nhảy app */
+        .player-frame {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            z-index: 5; /* Nằm dưới watermark (9999) nhưng nằm trên nền */
+            background-color: #000;
+        }
     </style>
 </head>
 <body>
-    <!-- CHÈN ID NGƯỜI DÙNG VÀO ĐÂY -->
     <div id="watermark">UID: Đang tải...</div>
 
     <div id="content">
@@ -50,6 +61,11 @@
     <script>
         window.Telegram.WebApp.expand();
         
+        // Hàm phát video an toàn trong Iframe
+        function playVideo(url) {
+            document.getElementById("content").innerHTML = '<iframe class="player-frame" src="' + url + '" allowfullscreen allow="autoplay; fullscreen"></iframe>';
+        }
+
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
@@ -65,11 +81,13 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
+            // Nếu là phim lẻ (Không có ký tự phân tách |)
             if (!decoded.includes("|")) {
-                window.location.replace(decoded.trim());
+                playVideo(decoded.trim());
                 return;
             }
 
+            // Nếu là phim bộ
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
@@ -92,7 +110,7 @@
                         if(link !== "") {
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
-                            btn.onclick = () => window.location.replace(link);
+                            btn.onclick = () => playVideo(link); // Thay vì replace, gọi iframe
                             container.appendChild(btn);
                         }
                     });
@@ -108,7 +126,7 @@
                     if(link !== "") {
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
-                        btn.onclick = () => window.location.replace(link);
+                        btn.onclick = () => playVideo(link); // Thay vì replace, gọi iframe
                         container.appendChild(btn);
                     }
                 });
