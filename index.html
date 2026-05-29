@@ -61,17 +61,16 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
-            // PHIM LẺ: Nếu link không có dấu | -> Chạy thẳng luôn (điện thoại không nhảy app)
+            // PHIM LẺ: Giữ nguyên logic gốc của bạn
             if (!decoded.includes("|")) {
                 window.location.replace(decoded.trim());
                 return;
             }
 
-            // PHIM BỘ: Có dấu | -> Hiển thị danh sách tập
+            // PHIM BỘ: Xử lý danh sách tập
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
-            // Format: Mùa 2 :: Link1 | Link2 || Mùa 1 :: Link3 | Link4
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach(season => {
@@ -92,9 +91,10 @@
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
                             btn.onclick = () => {
-                                // MẸO CHỐNG NHẢY APP: Load lại trang này với định dạng của phim lẻ
-                                const encodedEp = btoa(unescape(encodeURIComponent(link)));
-                                window.location.href = window.location.pathname + "?link=" + encodedEp + "&uid=" + uid;
+                                // FIX LỖI Ở ĐÂY: Dùng encodeURIComponent bọc base64 để không bị vỡ link
+                                const base64Ep = btoa(unescape(encodeURIComponent(link)));
+                                const safeLink = encodeURIComponent(base64Ep);
+                                window.location.search = "?link=" + safeLink + "&uid=" + encodeURIComponent(uid);
                             };
                             container.appendChild(btn);
                         }
@@ -102,7 +102,6 @@
                     listObj.appendChild(container);
                 });
             } else {
-                // Format: Link1 | Link2 | Link3
                 const container = document.createElement("div");
                 container.className = "ep-container";
                 
@@ -113,9 +112,10 @@
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
                         btn.onclick = () => {
-                            // MẸO CHỐNG NHẢY APP: Load lại trang này với định dạng của phim lẻ
-                            const encodedEp = btoa(unescape(encodeURIComponent(link)));
-                            window.location.href = window.location.pathname + "?link=" + encodedEp + "&uid=" + uid;
+                            // FIX LỖI Ở ĐÂY: Dùng encodeURIComponent bọc base64 để không bị vỡ link
+                            const base64Ep = btoa(unescape(encodeURIComponent(link)));
+                            const safeLink = encodeURIComponent(base64Ep);
+                            window.location.search = "?link=" + safeLink + "&uid=" + encodeURIComponent(uid);
                         };
                         container.appendChild(btn);
                     }
