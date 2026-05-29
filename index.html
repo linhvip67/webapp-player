@@ -14,21 +14,21 @@
         #status { margin-top: 50px; font-size: 18px; z-index: 10;}
         #content { position: relative; z-index: 10; }
         
-        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG CHỐNG RECORD MÀN HÌNH */
+        /* 🛡️ HỆ THỐNG WATERMARK ID ĐỘNG (CHỈ BẬT KHI CHỌN TẬP) */
         #watermark {
             position: fixed;
-            color: rgba(255, 255, 255, 0.15); /* Độ mờ 15%, nhìn đủ thấy nhưng không khó chịu */
+            color: rgba(255, 255, 255, 0.15);
             font-size: 20px;
             font-weight: bold;
             font-family: monospace;
-            pointer-events: none; /* Xuyên qua nút bấm, không gây lỗi cảm ứng */
+            pointer-events: none;
             user-select: none;
             z-index: 9999;
             text-shadow: 1px 1px 2px #000;
             animation: floatWatermark 25s infinite alternate ease-in-out;
+            display: none; /* Ẩn đi từ đầu cho gọn */
         }
 
-        /* Quỹ đạo bay lượn ngẫu nhiên khó bị che/crop */
         @keyframes floatWatermark {
             0% { top: 5%; left: 5%; transform: rotate(-5deg); }
             25% { top: 80%; left: 60%; transform: rotate(10deg); }
@@ -39,7 +39,6 @@
     </style>
 </head>
 <body>
-    <!-- CHÈN ID NGƯỜI DÙNG VÀO ĐÂY -->
     <div id="watermark">UID: Đang tải...</div>
 
     <div id="content">
@@ -53,10 +52,7 @@
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
-            const uid = urlParams.get("uid") || "Unknown"; // Bắt ID Telegram từ Bot truyền sang
-
-            // Hiển thị UID lên màn hình làm Watermark
-            document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
+            const uid = urlParams.get("uid") || "Unknown"; 
 
             if (!encodedLink) {
                 document.getElementById("status").innerText = "⚠️ Lỗi: Không tìm thấy dữ liệu phim!";
@@ -65,14 +61,26 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
+            // ==========================================
+            // 1. KỊCH BẢN PHIM LẺ: CHẠY THẲNG KHÔNG NHẢY APP
+            // ==========================================
             if (!decoded.includes("|")) {
+                // Tự động nhảy link luôn, không có sự kiện Click -> Điện thoại bỏ qua app OneDrive
                 window.location.replace(decoded.trim());
                 return;
             }
 
+            // ==========================================
+            // 2. KỊCH BẢN PHIM BỘ: DỰNG GIAO DIỆN CHỌN TẬP
+            // ==========================================
+            // Bật watermark lên để dọa
+            document.getElementById("watermark").innerText = "AZ5_UID: " + uid;
+            document.getElementById("watermark").style.display = "block";
+
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
+            // Format: Mùa 2 :: Link1 | Link2 || Mùa 1 :: Link3 | Link4
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach(season => {
@@ -92,13 +100,14 @@
                         if(link !== "") {
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
-                            btn.onclick = () => window.location.replace(link);
+                            btn.onclick = () => playEpisode(link, uid);
                             container.appendChild(btn);
                         }
                     });
                     listObj.appendChild(container);
                 });
             } else {
+                // Format: Link1 | Link2 | Link3
                 const container = document.createElement("div");
                 container.className = "ep-container";
                 
@@ -108,12 +117,26 @@
                     if(link !== "") {
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
-                        btn.onclick = () => window.location.replace(link);
+                        btn.onclick = () => playEpisode(link, uid);
                         container.appendChild(btn);
                     }
                 });
                 listObj.appendChild(container);
             }
+        }
+
+        // HÀM CHUYỂN TRANG "LỪA" ĐIỆN THOẠI CHỐNG NHẢY APP
+        function playEpisode(url, uid) {
+            // Tắt watermark cho mượt mắt khi xem
+            document.getElementById("watermark").style.display = "none";
+            document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang mở tập phim...</div>";
+            
+            // Ép mã hóa riêng link của tập này
+            const encodedEp = btoa(unescape(encodeURIComponent(url)));
+            
+            // Reload lại đúng trang web này nhưng ngậm link phim lẻ
+            // Việc reload giúp reset lại hành vi, khi trang load lại nó sẽ tự lọt vào Kịch Bản Phim Lẻ bên trên!
+            window.location.replace("?link=" + encodedEp + "&uid=" + uid);
         }
 
         try {
@@ -122,6 +145,7 @@
             document.getElementById("status").innerText = "⚠️ Lỗi xử lý dữ liệu!";
         }
 
+        // Chống F12 / Copy code
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
