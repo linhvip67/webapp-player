@@ -23,16 +23,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-
-        // 👇 ĐIỀN CHÍNH XÁC LINK CLOUDFLARE WORKER CỦA BẠN VÀO ĐÂY (Xóa dấu gạch chéo / ở cuối nếu có)
-        const CF_WORKER_URL = "https://az5subteam.linhvip67.workers.dev";
         
-        // Hàm bọc link qua "Trạm Lột Link"
-        function getStreamLink(rawLink) {
-            const encodedEp = btoa(unescape(encodeURIComponent(rawLink.trim())));
-            return CF_WORKER_URL + "/stream-video?file=" + encodedEp;
-        }
-
         function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
@@ -45,19 +36,20 @@
             const decoded = decodeURIComponent(escape(atob(encodedLink)));
 
             // ==========================================
-            // 1. PHIM LẺ: Lọc qua Cloudflare rồi mở video
+            // 1. PHIM LẺ: Giữ nguyên cách cũ, auto-load ngay
             // ==========================================
             if (!decoded.includes("|")) {
-                window.location.replace(getStreamLink(decoded));
+                window.location.replace(decoded.trim());
                 return;
             }
 
             // ==========================================
-            // 2. PHIM BỘ: Giao diện chọn tập
+            // 2. PHIM BỘ: Dựng giao diện chọn tập
             // ==========================================
             document.getElementById("content").innerHTML = "<h3>🎬 CHỌN TẬP PHIM</h3><div id='list'></div>";
             const listObj = document.getElementById("list");
 
+            // Format: Mùa 1 :: link | link || Mùa 2 :: link | link
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach(season => {
@@ -77,12 +69,7 @@
                         if(link !== "") {
                             const btn = document.createElement("button");
                             btn.innerText = "Tập " + (index + 1);
-                            
-                            // KHI BẤM NÚT: Đẩy link qua Cloudflare Worker để lột xác thành MP4 gốc
-                            btn.onclick = () => {
-                                document.getElementById("content").innerHTML = "<div id='status' style='color:#00ff88; font-weight:bold;'>🍿 Đang mở phim...</div>";
-                                window.location.replace(getStreamLink(link));
-                            };
+                            btn.onclick = () => playEpisode(link); // Bước này cực kỳ quan trọng
                             container.appendChild(btn);
                         }
                     });
@@ -98,17 +85,30 @@
                     if(link !== "") {
                         const btn = document.createElement("button");
                         btn.innerText = "Tập " + (index + 1);
-                        
-                        // KHI BẤM NÚT: Đẩy link qua Cloudflare Worker để lột xác thành MP4 gốc
-                        btn.onclick = () => {
-                            document.getElementById("content").innerHTML = "<div id='status' style='color:#00ff88; font-weight:bold;'>🍿 Đang mở phim...</div>";
-                            window.location.replace(getStreamLink(link));
-                        };
+                        btn.onclick = () => playEpisode(link);
                         container.appendChild(btn);
                     }
                 });
                 listObj.appendChild(container);
             }
+        }
+
+        // HÀM CHỐNG NHẢY APP: KHÔNG THAY ĐỔI URL CHÍNH
+        function playEpisode(url) {
+            // Hiển thị trạng thái đang tải ngay tại trang này
+            document.getElementById("content").innerHTML = "<div id='status'>🍿 Đang mở tập phim...</div>";
+            
+            // Ép mã hóa link MP4 (SharePoint)
+            const encodedEp = btoa(unescape(encodeURIComponent(url.trim())));
+            
+            // Dùng trick time-out ngắt Click + Meta Refresh bẻ lái
+            // Giúp lách App OneDrive trên iOS/Android 100%
+            setTimeout(() => {
+                const meta = document.createElement('meta');
+                meta.httpEquiv = "refresh";
+                meta.content = "0; url=" + url.trim();
+                document.head.appendChild(meta);
+            }, 300);
         }
 
         try {
