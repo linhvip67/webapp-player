@@ -10,10 +10,14 @@
         /* 🎬 KHUNG VIDEO */
         .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
         
-        /* IFRAME: Cho phép Full-screen tự do */
-        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
-
-        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP (Vuốt mượt trên ĐT) */
+        /* 
+           IFRAME CHỐNG NHẢY APP: 
+           Thuộc tính sandbox CHỈ cho phép chạy script và phát video. 
+           TUYỆT ĐỐI cấm mở popup, cấm nhảy trang, cấm gọi ứng dụng ngoài! 
+        */
+        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; }
+        
+        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP (Tối ưu vuốt chạm cho ĐT/Tablet) */
         .controls-container { padding: 15px; display: none; }
         
         /* Thanh Tab Mùa */
@@ -34,13 +38,8 @@
 <body>
 
     <div class="video-wrapper">
-        <iframe id="video-frame" src="" 
-                allow="autoplay; fullscreen" 
-                allowfullscreen="true" 
-                webkitallowfullscreen="true" 
-                mozallowfullscreen="true"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms">
-        </iframe>
+        <!-- Đã dẹp bỏ hoàn toàn Watermark. Giữ nguyên Fullscreen và bọc Sandbox -->
+        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
@@ -55,47 +54,25 @@
         window.Telegram.WebApp.expand();
         
         let seriesData = [];
-        let currentSeasonIndex = 0;
-
-        // 🚀 THUẬT TOÁN TỰ ĐỘNG BẺ KHÓA & ÉP THÀNH LINK STREAM.ASPX ĐỂ CHẶN TẢI
-        function forceStreamUrl(rawUrl) {
-            let u = rawUrl.trim().split('?')[0]; // Cắt bỏ mọi rác rưởi nếu m lỡ tay dán thừa
-
-            // Tự động nhận diện cấu trúc link gốc OneDrive của m
-            // Ví dụ: https://6cl2sr-my.sharepoint.com/:v:/g/personal/linhvip167.../IQAnbK...
-            let match = u.match(/(https:\/\/[^\/]+)\/:\w:\/\w\/(personal\/[^\/]+)\/(.+)/);
-
-            if (match) {
-                let baseServer = match[1]; // https://6cl2sr-my.sharepoint.com
-                let userPath = match[2];   // personal/linhvip167_6cl2sr_onmicrosoft_com
-                let token = match[3];      // IQAnbKOkP0CcTIuGQa_0S19MAcF37C6CCtXk9BqoICzeY9U
-
-                // 🌟 BIẾN HÌNH: Trả về chuẩn luồng stream.aspx nội bộ
-                return baseServer + "/" + userPath + "/_layouts/15/stream.aspx?share=" + token;
-            }
-
-            return u; // Fallback
-        }
 
         function playEpisode(url, epBtn) {
-            // Khi khách bấm chọn tập, web tự động convert link thô thành link Stream
-            document.getElementById("video-frame").src = forceStreamUrl(url);
+            // Lệnh nguyên thủy: Nhận URL thế nào, nạp vào iframe y hệt như thế, KHÔNG CAN THIỆP SỬA LINK!
+            document.getElementById("video-frame").src = url.trim();
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('active'));
             if(epBtn) epBtn.classList.add('active');
         }
 
         function renderEpisodes(seasonIdx) {
-            currentSeasonIndex = seasonIdx;
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
-            // Cập nhật tab mùa
+            // Đổi màu tab mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIdx);
             });
 
-            // Nạp tập
+            // Render nút tập
             const episodes = seriesData[seasonIdx].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
@@ -105,7 +82,7 @@
                 epsGrid.appendChild(btn);
             });
 
-            // Tự động click phát tập đầu tiên
+            // Tự động phát tập đầu tiên của mùa vừa chọn
             epsGrid.firstChild.click();
         }
 
@@ -119,7 +96,7 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // LOGIC TÁCH MÙA & TẬP CHUẨN XÁC
+            // CẤU TRÚC PHÂN TÁCH MÙA TẬP HOÀN THIỆN
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -142,7 +119,7 @@
                 seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
             }
 
-            // DỰNG GIAO DIỆN LÊN APP
+            // DỰNG GIAO DIỆN
             if (seriesData.length > 0) {
                 if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
                     document.getElementById("controls-ui").style.display = "block";
