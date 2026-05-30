@@ -7,16 +7,16 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; overflow-x: hidden; }
         
-        /* 🎬 KHUNG VIDEO SẠCH 100% (Đã xóa Watermark) */
+        /* 🎬 KHUNG VIDEO */
         .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
         
-        /* IFRAME: Cho phép Full-screen tự do, nhưng bị khóa chặt trong Sandbox để chặn nhảy App */
+        /* IFRAME: Cho phép Full-screen tự do */
         iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
-        
-        /* 📋 GIAO DIỆN MÙA & TẬP (Tối ưu Cảm ứng) */
+
+        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP (Vuốt mượt trên ĐT) */
         .controls-container { padding: 15px; display: none; }
         
-        /* Thanh Tab Mùa vuốt ngang */
+        /* Thanh Tab Mùa */
         .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 15px; border-bottom: 1px solid #1c212e; scrollbar-width: none; }
         .season-tabs::-webkit-scrollbar { display: none; }
         .season-btn { background: transparent; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 18px; border-radius: 20px; font-size: 14px; white-space: nowrap; font-weight: 600; cursor: pointer; transition: 0.2s; }
@@ -34,7 +34,13 @@
 <body>
 
     <div class="video-wrapper">
-        <iframe id="video-frame" src="" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+        <iframe id="video-frame" src="" 
+                allow="autoplay; fullscreen" 
+                allowfullscreen="true" 
+                webkitallowfullscreen="true" 
+                mozallowfullscreen="true"
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms">
+        </iframe>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
@@ -47,24 +53,33 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-
+        
         let seriesData = [];
         let currentSeasonIndex = 0;
 
-        // 🚀 THUẬT TOÁN ÉP STREAM (Hoạt động ngầm)
-        function forceStreamPlayer(rawUrl) {
-            let u = rawUrl.trim();
-            // Code tự động ép link thô thành luồng Stream để chặn tải, chặn nhảy app
-            // M không cần phải sửa link thủ công trong Sheet nữa.
-            if (!u.includes("action=embedview")) {
-                u += (u.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+        // 🚀 THUẬT TOÁN TỰ ĐỘNG BẺ KHÓA & ÉP THÀNH LINK STREAM.ASPX ĐỂ CHẶN TẢI
+        function forceStreamUrl(rawUrl) {
+            let u = rawUrl.trim().split('?')[0]; // Cắt bỏ mọi rác rưởi nếu m lỡ tay dán thừa
+
+            // Tự động nhận diện cấu trúc link gốc OneDrive của m
+            // Ví dụ: https://6cl2sr-my.sharepoint.com/:v:/g/personal/linhvip167.../IQAnbK...
+            let match = u.match(/(https:\/\/[^\/]+)\/:\w:\/\w\/(personal\/[^\/]+)\/(.+)/);
+
+            if (match) {
+                let baseServer = match[1]; // https://6cl2sr-my.sharepoint.com
+                let userPath = match[2];   // personal/linhvip167_6cl2sr_onmicrosoft_com
+                let token = match[3];      // IQAnbKOkP0CcTIuGQa_0S19MAcF37C6CCtXk9BqoICzeY9U
+
+                // 🌟 BIẾN HÌNH: Trả về chuẩn luồng stream.aspx nội bộ
+                return baseServer + "/" + userPath + "/_layouts/15/stream.aspx?share=" + token;
             }
-            return u;
+
+            return u; // Fallback
         }
 
         function playEpisode(url, epBtn) {
-            // Nạp link đã qua xử lý ép Stream vào Iframe
-            document.getElementById("video-frame").src = forceStreamPlayer(url);
+            // Khi khách bấm chọn tập, web tự động convert link thô thành link Stream
+            document.getElementById("video-frame").src = forceStreamUrl(url);
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('active'));
             if(epBtn) epBtn.classList.add('active');
@@ -75,10 +90,12 @@
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
+            // Cập nhật tab mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIdx);
             });
 
+            // Nạp tập
             const episodes = seriesData[seasonIdx].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
@@ -88,20 +105,21 @@
                 epsGrid.appendChild(btn);
             });
 
-            // Tự động phát tập đầu của mùa
+            // Tự động click phát tập đầu tiên
             epsGrid.firstChild.click();
         }
 
         function initApp() {
             const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
+            
             if (!encodedLink) {
                 document.getElementById("error-msg").style.display = "block"; return;
             }
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC PHÂN TÁCH MÙA TẬP
+            // LOGIC TÁCH MÙA & TẬP CHUẨN XÁC
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -124,7 +142,7 @@
                 seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
             }
 
-            // DỰNG GIAO DIỆN
+            // DỰNG GIAO DIỆN LÊN APP
             if (seriesData.length > 0) {
                 if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
                     document.getElementById("controls-ui").style.display = "block";
@@ -141,6 +159,7 @@
                     } else {
                         sTabs.style.display = "none";
                     }
+                    
                     renderEpisodes(0);
                 } else {
                     playEpisode(seriesData[0].episodes[0]);
