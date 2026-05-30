@@ -35,7 +35,7 @@
         <p>Bấm vào tập phim để xem ngay</p>
     </div>
 
-    <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim! Hãy kiểm tra lại link trong Sheet.</div>
+    <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim! Hãy kiểm tra lại link.</div>
 
     <div class="controls-container" id="controls-ui">
         <div class="season-tabs" id="season-tabs"></div>
@@ -47,10 +47,21 @@
         window.Telegram.WebApp.expand();
         let seriesData = [];
 
+        // 🔥 BỘ LỌC AUTO-CLEAN: Tự động giấu nút Download & Share
+        function getCleanCinemaUrl(rawUrl) {
+            let u = rawUrl.trim();
+            // Nếu là link SharePoint/OneDrive, tự động băm nát cái đuôi cũ và gắn lệnh ẩn UI vào
+            if (u.includes("sharepoint.com") || u.includes("1drv.ms")) {
+                u = u.split('?')[0]; // Chặt bỏ phần ?e=... rác
+                u = u + "?action=embedview&wmode=transparent"; // Ép vào chế độ Cinema
+            }
+            return u;
+        }
+
         function playEpisode(url) {
-            // 🔥 ĐÒN CHÍ MẠNG: Dùng API gốc của Telegram để bật link phim thẳng ra trình duyệt nội bộ.
-            // Bỏ qua mọi giới hạn Iframe, không bị Refused to connect!
-            window.Telegram.WebApp.openLink(url.trim());
+            // Đưa link qua màng lọc trước khi bật
+            const cleanUrl = getCleanCinemaUrl(url);
+            window.Telegram.WebApp.openLink(cleanUrl);
         }
 
         function renderEpisodes(seasonIdx) {
@@ -121,7 +132,7 @@
                 
                 renderEpisodes(0);
                 
-                // Nếu chỉ là phim lẻ (1 link duy nhất), tự động bật phim luôn không cần khách phải ấn nút
+                // Nếu phim lẻ, tự động bật (đã qua lọc)
                 if (seriesData.length === 1 && seriesData[0].episodes.length === 1) {
                     playEpisode(seriesData[0].episodes[0]);
                 }
