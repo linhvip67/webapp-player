@@ -5,50 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🍿 Xem Phim Subteam</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: sans-serif; color: white; overflow-x: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; overflow-x: hidden; }
         
         /* 🎬 KHUNG VIDEO */
         .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
         
-        /* 🛡️ WATERMARK ĐI DẠO VIỀN MÀN HÌNH (Mờ 12%, không vào giữa) */
+        /* Bật toàn quyền cho iframe */
+        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
+        
+        /* 🛡️ WATERMARK ĐI DẠO 4 MÉP VIỀN (Không lọt vào giữa) */
         #watermark {
             position: absolute;
-            color: rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.15); /* Độ mờ 15% tinh tế */
             font-size: 14px;
-            font-weight: normal;
+            font-weight: 500;
             pointer-events: none;
             user-select: none;
             z-index: 10;
             white-space: nowrap;
-            /* 60s cho 1 vòng đi dạo */
-            animation: walkAround 60s linear infinite; 
+            /* Đi lờ đờ 1 vòng mất 60 giây */
+            animation: perimeterWalk 60s linear infinite; 
         }
 
-        /* Logic chạy men theo 4 mép: Trên L -> Trên R -> Dưới R -> Dưới L */
-        @keyframes walkAround {
-            0%   { top: 4%; left: 4%; transform: translateX(0); }
-            25%  { top: 4%; left: 96%; transform: translateX(-100%); }
-            50%  { top: 88%; left: 96%; transform: translateX(-100%); }
-            75%  { top: 88%; left: 4%; transform: translateX(0); }
-            100% { top: 4%; left: 4%; transform: translateX(0); }
+        /* Thuật toán mép: Góc trái trên -> Góc phải trên -> Góc phải dưới -> Góc trái dưới */
+        @keyframes perimeterWalk {
+            0% { top: 3%; left: 2%; transform: translateX(0); }
+            25% { top: 3%; left: 98%; transform: translateX(-100%); }
+            50% { top: 88%; left: 98%; transform: translateX(-100%); }
+            75% { top: 88%; left: 2%; transform: translateX(0); }
+            100% { top: 3%; left: 2%; transform: translateX(0); }
         }
 
-        /* IFRAME: Z-index thấp hơn Watermark. Nhưng khi Fullscreen nó sẽ tự đè lên mọi thứ. */
-        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
-
-        /* 📋 GIAO DIỆN CHỌN TẬP */
+        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP */
         .controls-container { padding: 15px; display: none; }
-        .section-title { color: #f1c40f; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; }
+        .section-title { color: #f1c40f; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* Tab Mùa */
+        /* Tab Mùa (Vuốt ngang mượt mà trên đt) */
         .season-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid #1c212e; scrollbar-width: none; }
         .season-tabs::-webkit-scrollbar { display: none; }
         .season-btn { background: transparent; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 16px; border-radius: 20px; font-size: 14px; white-space: nowrap; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
 
-        /* Grid Tập */
+        /* Lưới chọn Tập */
         .episodes-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #cbd5e1; padding: 12px 10px; border-radius: 8px; font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; flex: 1 1 calc(25% - 10px); min-width: 65px; transition: 0.15s; }
+        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #cbd5e1; padding: 12px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; cursor: pointer; flex: 1 1 calc(25% - 10px); min-width: 65px; transition: 0.15s; }
         .ep-btn:active { transform: scale(0.95); }
         .ep-btn.playing { background: #fff; color: #000; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
         
@@ -59,6 +59,7 @@
 
     <div class="video-wrapper" id="vid-wrapper">
         <div id="watermark">UID: Đang tải...</div>
+        
         <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
     </div>
     
@@ -80,29 +81,22 @@
 
         let seriesData = [];
 
-        // 🚀 THUẬT TOÁN BẺ KHÓA LINK CHUYÊN SÂU
-        function convertToDirectEmbed(rawUrl) {
-            let u = rawUrl.trim().split('?')[0]; // Chặt đuôi rác
-
-            // Biểu thức Regex bóc tách đúng cái link m đưa
-            // VD: https://6cl2sr-my.sharepoint.com/:v:/g/personal/linhvip167_6cl2sr_onmicrosoft_com/IQAnbKOk...
-            let match = u.match(/(https:\/\/[^\/]+)\/:\w:\/g\/(personal\/[^\/]+)\/(.+)/);
-            
-            if (match) {
-                let baseServer = match[1]; // https://6cl2sr-my.sharepoint.com
-                let userPath = match[2];   // personal/linhvip167_6cl2sr_onmicrosoft_com
-                let fileToken = match[3];  // IQAnbK...
-                
-                // Trả về luồng Embed nội bộ (Bypass Login + Bypass X-Frame + fs=1 để ép nút Full-screen)
-                return baseServer + "/" + userPath + "/_layouts/15/embed.aspx?share=" + fileToken + "&fs=1";
+        // HÀM BÓC TÁCH LINK THÔ (Tuyệt đối không sửa thuật toán link)
+        function getRawLink(url) {
+            let u = url.trim();
+            // Nếu admin dán nhầm thẻ <iframe src="..."> thì chỉ lấy cái link bên trong
+            if (u.toLowerCase().startsWith("<iframe")) {
+                const match = u.match(/src=["'](.*?)["']/);
+                if (match && match[1]) {
+                    u = match[1];
+                }
             }
-            return u;
+            return u; // Trả về link nguyên bản
         }
 
         function playEpisode(url, epBtn) {
             const iframe = document.getElementById("video-frame");
-            // Nạp link đã được bẻ khóa vào Iframe
-            iframe.src = convertToDirectEmbed(url);
+            iframe.src = getRawLink(url); // Bơm link trực tiếp vào iframe
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
             if(epBtn) epBtn.classList.add('playing');
@@ -135,7 +129,7 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC: Tên Mùa :: Link1 | Link2 || Tên Mùa Kế :: Link1
+            // CẤU TRÚC: Tên Mùa :: Link1 | Link2 || Tên Mùa 2 :: Link1
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
