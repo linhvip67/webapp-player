@@ -3,62 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🍿 Bảng Điều Khiển Phim</title>
+    <title>🍿 Chọn Tập Phim</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; }
+        body, html { margin: 0; padding: 0; width: 100%; min-height: 100vh; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; }
         
-        /* Tiêu đề trang */
-        .header { 
-            text-align: center; 
-            padding: 20px; 
-            background: #1c212e; 
-            border-bottom: 2px solid #e50914; 
-            font-size: 18px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            color: #f1c40f; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
+        .header { background: #1c212e; padding: 20px; text-align: center; border-bottom: 2px solid #e50914; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .header h2 { margin: 0; color: #fff; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .header p { margin: 5px 0 0 0; color: #94a3b8; font-size: 13px; }
 
         .controls-container { padding: 20px; }
         
-        /* Lưới Nút Mùa */
-        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 20px; border-bottom: 1px solid #2a2e39; scrollbar-width: none; }
+        /* Thanh Tab Mùa */
+        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 20px; border-bottom: 1px solid #1c212e; scrollbar-width: none; }
         .season-tabs::-webkit-scrollbar { display: none; }
-        .season-btn { background: #111520; border: 1px solid #2a2e39; color: #94a3b8; padding: 10px 20px; border-radius: 25px; font-size: 15px; white-space: nowrap; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
+        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 10px 20px; border-radius: 20px; font-size: 15px; white-space: nowrap; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; box-shadow: 0 0 10px rgba(229, 9, 20, 0.4); }
 
-        /* Lưới Nút Tập (Làm to ra để dễ bấm trên điện thoại) */
-        .episodes-grid { display: flex; flex-wrap: wrap; gap: 15px; }
-        .ep-btn { 
-            background: #1c212e; 
-            border: 1px solid #2a2e39; 
-            color: #e2e8f0; 
-            padding: 15px 10px; 
-            border-radius: 12px; 
-            font-size: 16px; 
-            font-weight: bold; 
-            text-align: center; 
-            cursor: pointer; 
-            flex: 1 1 calc(33.33% - 15px); 
-            min-width: 80px; 
-            transition: 0.2s; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        .ep-btn:active { transform: scale(0.92); background: #334155; }
+        /* Lưới Nút Tập */
+        .episodes-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 15px 10px; border-radius: 10px; font-size: 15px; font-weight: 600; text-align: center; cursor: pointer; flex: 1 1 calc(33.333% - 12px); min-width: 80px; transition: 0.15s; display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .ep-btn:active { transform: scale(0.95); background: #2a2e39; }
+        .ep-btn::before { content: '▶'; font-size: 12px; color: #e50914; }
         
-        #error-msg { text-align: center; color: #ef4444; padding: 30px; font-weight: bold; display: none; font-size: 16px;}
-        .instruction { text-align: center; color: #94a3b8; font-size: 14px; margin-bottom: 20px; font-style: italic; }
+        #error-msg { text-align: center; color: #ef4444; padding: 40px 20px; font-weight: bold; display: none; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <div class="header">🎬 DANH SÁCH TẬP PHIM</div>
-    
-    <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
+    <div class="header">
+        <h2>🎬 Kho Phim Subteam</h2>
+        <p>Bấm vào tập phim để xem ngay</p>
+    </div>
 
-    <div class="controls-container" id="controls-ui" style="display: none;">
-        <div class="instruction">👇 Chọn tập để tự động mở trình phát video 👇</div>
+    <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim! Hãy kiểm tra lại link trong Sheet.</div>
+
+    <div class="controls-container" id="controls-ui">
         <div class="season-tabs" id="season-tabs"></div>
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
@@ -66,13 +45,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-        
         let seriesData = [];
 
         function playEpisode(url) {
-            // ĐÒN CHỐT HẠ: Chuyển hướng trình duyệt thẳng tới link Microsoft
-            // Không bị kẹt trong Iframe, không bao giờ lỗi Refused to connect!
-            window.location.href = url.trim();
+            // 🔥 ĐÒN CHÍ MẠNG: Dùng API gốc của Telegram để bật link phim thẳng ra trình duyệt nội bộ.
+            // Bỏ qua mọi giới hạn Iframe, không bị Refused to connect!
+            window.Telegram.WebApp.openLink(url.trim());
         }
 
         function renderEpisodes(seasonIdx) {
@@ -103,7 +81,6 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC PHÂN TÁCH MÙA TẬP
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -123,16 +100,13 @@
                 const eps = decoded.split("|").map(l => l.trim()).filter(l => l);
                 seriesData.push({ name: "Danh sách Tập", episodes: eps });
             } else {
-                // Nếu là phim lẻ 1 tập, tự động nhảy thẳng vào phim luôn, bỏ qua Menu!
-                playEpisode(decoded.trim());
-                return;
+                seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
             }
 
-            // DỰNG GIAO DIỆN MENU
             if (seriesData.length > 0) {
                 document.getElementById("controls-ui").style.display = "block";
-                const sTabs = document.getElementById("season-tabs");
                 
+                const sTabs = document.getElementById("season-tabs");
                 if (seriesData.length > 1) {
                     seriesData.forEach((season, idx) => {
                         const btn = document.createElement("button");
@@ -146,6 +120,11 @@
                 }
                 
                 renderEpisodes(0);
+                
+                // Nếu chỉ là phim lẻ (1 link duy nhất), tự động bật phim luôn không cần khách phải ấn nút
+                if (seriesData.length === 1 && seriesData[0].episodes.length === 1) {
+                    playEpisode(seriesData[0].episodes[0]);
+                }
             } else {
                 document.getElementById("error-msg").style.display = "block";
             }
