@@ -15,10 +15,9 @@
             position: relative; 
             overflow: hidden; 
             border-bottom: 2px solid #2a2e39;
-            transition: all 0.2s ease;
         }
 
-        /* 🚀 CSS KÍCH HOẠT CHẾ ĐỘ FULL-SCREEN CHO KHUNG (GIỮ WATERMARK) */
+        /* 🚀 CSS KÍCH HOẠT CHẾ ĐỘ FULL-SCREEN CHO KHUNG */
         .video-container.fullscreen-mode {
             position: fixed;
             top: 0; left: 0;
@@ -32,7 +31,7 @@
 
         iframe { width: 100%; height: 100%; border: none; outline: none; }
         
-        /* 🔲 NÚT PHÓNG TO TỰ CHẾ */
+        /* 🔲 NÚT PHÓNG TO TỰ CHẾ TRÊN CÙNG BÊN PHẢI */
         .custom-fs-btn {
             position: absolute;
             top: 10px;
@@ -49,16 +48,15 @@
         }
         .custom-fs-btn:active { background: rgba(0,0,0,0.8); }
 
-        /* 🛡️ WATERMARK MỜ, CHẬM RÃI, KHÔNG VIỀN */
+        /* 🛡️ WATERMARK MỜ 12%, KHÔNG VIỀN, BẢO VỆ XUYÊN SUỐT */
         #watermark {
             position: absolute;
-            color: rgba(255, 255, 255, 0.12); /* Trắng mờ 12%, cực tinh tế */
+            color: rgba(255, 255, 255, 0.12); 
             font-size: 16px;
-            font-weight: normal; /* Bỏ in đậm nếu m muốn nó mỏng manh hơn */
+            font-weight: normal;
             pointer-events: none;
             user-select: none;
             z-index: 9;
-            /* Tăng thời gian lên 80s cho nó trôi lờ đờ như đám mây */
             animation: floatWatermark 80s infinite alternate linear; 
         }
 
@@ -81,6 +79,7 @@
 <body>
 
     <div class="video-container" id="vid-container">
+        <!-- Nút Phóng to/Thu nhỏ Tự chế bảo vệ Watermark -->
         <button id="fs-btn" class="custom-fs-btn" onclick="toggleFullscreen()">⛶ Phóng to</button>
         
         <div id="watermark">UID: Đang tải...</div>
@@ -99,17 +98,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         document.getElementById("watermark").innerText = "AZ5_UID: " + (urlParams.get("uid") || "Ẩn Danh");
 
-        // 🚀 Hàm Mở/Tắt Full-screen thủ công bảo vệ Watermark
         function toggleFullscreen() {
             const container = document.getElementById("vid-container");
             const btn = document.getElementById("fs-btn");
             
-            // Ép full toàn màn hình bằng CSS (Đảm bảo hoạt động 100% trên iPhone)
             container.classList.toggle("fullscreen-mode");
             
             if (container.classList.contains("fullscreen-mode")) {
                 btn.innerHTML = "✖ Thu nhỏ";
-                // Ép thêm API Full-screen thật của Android/PC để giấu thanh trạng thái pin/wifi
                 try {
                     if (container.requestFullscreen) container.requestFullscreen();
                     else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
@@ -123,12 +119,13 @@
             }
         }
 
+        // Tự động bóc tách link sạch từ thẻ Iframe của Admin
         function cleanUrl(url) {
             let u = url.trim();
-            // Lần này KHÔNG thêm fs=1 nữa vì mình đã dùng nút tự chế
-            if (u.includes("sharepoint.com") || u.includes("1drv.ms")) {
-                if (!u.includes("action=embedview")) {
-                    u += (u.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+            if (u.toLowerCase().startsWith("<iframe")) {
+                const match = u.match(/src=["'](.*?)["']/);
+                if (match && match[1]) {
+                    u = match[1];
                 }
             }
             return u;
