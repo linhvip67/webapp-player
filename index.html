@@ -7,26 +7,67 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; overflow-x: hidden; font-family: sans-serif; color: white;}
         
-        .video-container { width: 100%; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #2a2e39;}
+        /* KHUNG VIDEO GỐC */
+        .video-container { 
+            width: 100vw; 
+            aspect-ratio: 16/9; 
+            background: #000; 
+            position: relative; 
+            overflow: hidden; 
+            border-bottom: 2px solid #2a2e39;
+            transition: all 0.2s ease;
+        }
+
+        /* 🚀 CSS KÍCH HOẠT CHẾ ĐỘ FULL-SCREEN CHO KHUNG (GIỮ WATERMARK) */
+        .video-container.fullscreen-mode {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; 
+            height: 100vh;
+            max-height: none;
+            z-index: 999999;
+            border-bottom: none;
+            aspect-ratio: auto;
+        }
+
         iframe { width: 100%; height: 100%; border: none; outline: none; }
         
-        /* Watermark mờ ảo không viền */
+        /* 🔲 NÚT PHÓNG TO TỰ CHẾ */
+        .custom-fs-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 10;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .custom-fs-btn:active { background: rgba(0,0,0,0.8); }
+
+        /* 🛡️ WATERMARK MỜ, CHẬM RÃI, KHÔNG VIỀN */
         #watermark {
             position: absolute;
-            color: rgba(255, 255, 255, 0.1); 
+            color: rgba(255, 255, 255, 0.12); /* Trắng mờ 12%, cực tinh tế */
             font-size: 16px;
-            font-weight: bold;
-            font-family: monospace;
+            font-weight: normal; /* Bỏ in đậm nếu m muốn nó mỏng manh hơn */
             pointer-events: none;
             user-select: none;
             z-index: 9;
-            animation: floatWatermark 25s infinite alternate ease-in-out;
+            /* Tăng thời gian lên 80s cho nó trôi lờ đờ như đám mây */
+            animation: floatWatermark 80s infinite alternate linear; 
         }
 
         @keyframes floatWatermark {
-            0% { top: 10%; left: 10%; transform: rotate(-5deg); }
-            50% { top: 80%; left: 70%; transform: rotate(10deg); }
-            100% { top: 20%; left: 60%; transform: rotate(0deg); }
+            0% { top: 10%; left: 5%; }
+            25% { top: 80%; left: 60%; }
+            50% { top: 20%; left: 80%; }
+            75% { top: 75%; left: 15%; }
+            100% { top: 40%; left: 45%; }
         }
 
         .controls-container { padding: 20px; display: none; }
@@ -40,8 +81,11 @@
 <body>
 
     <div class="video-container" id="vid-container">
+        <button id="fs-btn" class="custom-fs-btn" onclick="toggleFullscreen()">⛶ Phóng to</button>
+        
         <div id="watermark">UID: Đang tải...</div>
-        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+        
+        <iframe id="video-frame" src="" allow="autoplay" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
     </div>
     
     <div class="controls-container" id="controls-ui">
@@ -55,11 +99,37 @@
         const urlParams = new URLSearchParams(window.location.search);
         document.getElementById("watermark").innerText = "AZ5_UID: " + (urlParams.get("uid") || "Ẩn Danh");
 
+        // 🚀 Hàm Mở/Tắt Full-screen thủ công bảo vệ Watermark
+        function toggleFullscreen() {
+            const container = document.getElementById("vid-container");
+            const btn = document.getElementById("fs-btn");
+            
+            // Ép full toàn màn hình bằng CSS (Đảm bảo hoạt động 100% trên iPhone)
+            container.classList.toggle("fullscreen-mode");
+            
+            if (container.classList.contains("fullscreen-mode")) {
+                btn.innerHTML = "✖ Thu nhỏ";
+                // Ép thêm API Full-screen thật của Android/PC để giấu thanh trạng thái pin/wifi
+                try {
+                    if (container.requestFullscreen) container.requestFullscreen();
+                    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+                } catch(e) {}
+            } else {
+                btn.innerHTML = "⛶ Phóng to";
+                try {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                } catch(e) {}
+            }
+        }
+
         function cleanUrl(url) {
             let u = url.trim();
-            // Ép full screen và embedview
+            // Lần này KHÔNG thêm fs=1 nữa vì mình đã dùng nút tự chế
             if (u.includes("sharepoint.com") || u.includes("1drv.ms")) {
-                if (!u.includes("fs=1")) u += (u.includes("?") ? "&" : "?") + "fs=1&action=embedview&wmode=transparent";
+                if (!u.includes("action=embedview")) {
+                    u += (u.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+                }
             }
             return u;
         }
@@ -71,7 +141,10 @@
         }
 
         function init() {
-            const decoded = decodeURIComponent(escape(atob(urlParams.get("link")))); 
+            const encodedLink = urlParams.get("link");
+            if(!encodedLink) return;
+
+            const decoded = decodeURIComponent(escape(atob(encodedLink))); 
             let eps = decoded.split("|").map(l => l.trim()).filter(l => l);
             
             if (eps.length > 0) {
