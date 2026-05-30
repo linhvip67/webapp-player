@@ -11,13 +11,13 @@
         .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
         
         /* 
-           IFRAME CHỐNG NHẢY APP: 
-           Thuộc tính sandbox CHỈ cho phép chạy script và phát video. 
-           TUYỆT ĐỐI cấm mở popup, cấm nhảy trang, cấm gọi ứng dụng ngoài! 
+           IFRAME NGUYÊN THỦY: 
+           Đã gỡ bỏ toàn bộ Sandbox và khóa chặn. Nhận link gốc và chiếu. 
+           Cho phép Full-screen tự do trên mọi thiết bị.
         */
         iframe { width: 100%; height: 100%; border: none; outline: none; display: block; }
         
-        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP (Tối ưu vuốt chạm cho ĐT/Tablet) */
+        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP */
         .controls-container { padding: 15px; display: none; }
         
         /* Thanh Tab Mùa */
@@ -38,8 +38,7 @@
 <body>
 
     <div class="video-wrapper">
-        <!-- Đã dẹp bỏ hoàn toàn Watermark. Giữ nguyên Fullscreen và bọc Sandbox -->
-        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" frameborder="0"></iframe>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
@@ -56,8 +55,8 @@
         let seriesData = [];
 
         function playEpisode(url, epBtn) {
-            // Lệnh nguyên thủy: Nhận URL thế nào, nạp vào iframe y hệt như thế, KHÔNG CAN THIỆP SỬA LINK!
-            document.getElementById("video-frame").src = url.trim();
+            // Lệnh nguyên thủy: Nhét nguyên xi cái link vào thẻ src, KHÔNG THÊM BỚT 1 CHỮ
+            document.getElementById("video-frame").src = url;
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('active'));
             if(epBtn) epBtn.classList.add('active');
@@ -96,7 +95,7 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC PHÂN TÁCH MÙA TẬP HOÀN THIỆN
+            // CẤU TRÚC PHÂN TÁCH MÙA TẬP
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -147,7 +146,6 @@
         }
 
         initApp();
-        document.addEventListener('contextmenu', event => event.preventDefault());
     </script>
 </body>
 </html>
