@@ -7,35 +7,12 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; overflow-x: hidden; }
         
-        /* 🎬 KHUNG VIDEO */
+        /* 🎬 KHUNG VIDEO SẠCH 100% (Đã xóa Watermark) */
         .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
         
-        /* IFRAME: Cho phép Full-screen tự do */
+        /* IFRAME: Cho phép Full-screen tự do, nhưng bị khóa chặt trong Sandbox để chặn nhảy App */
         iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
         
-        /* 🛡️ WATERMARK: Chạy men 4 mép viền, cực chậm, mờ 15%. Sẽ tự biến mất khi Iframe Full-screen */
-        #watermark {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.15); 
-            font-size: 14px;
-            font-weight: 500;
-            pointer-events: none;
-            user-select: none;
-            z-index: 10;
-            white-space: nowrap;
-            /* 1 vòng quanh màn hình mất 60 giây */
-            animation: walkEdges 60s linear infinite; 
-        }
-
-        /* Logic bám viền: Trái trên -> Phải trên -> Phải dưới -> Trái dưới */
-        @keyframes walkEdges {
-            0%   { top: 2%; left: 2%; transform: translateX(0); }
-            25%  { top: 2%; left: 98%; transform: translateX(-100%); }
-            50%  { top: 88%; left: 98%; transform: translateX(-100%); }
-            75%  { top: 88%; left: 2%; transform: translateX(0); }
-            100% { top: 2%; left: 2%; transform: translateX(0); }
-        }
-
         /* 📋 GIAO DIỆN MÙA & TẬP (Tối ưu Cảm ứng) */
         .controls-container { padding: 15px; display: none; }
         
@@ -57,8 +34,7 @@
 <body>
 
     <div class="video-wrapper">
-        <div id="watermark">UID: Đang tải...</div>
-        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+        <iframe id="video-frame" src="" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
@@ -71,18 +47,24 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-        
-        // Gắn Watermark
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get("uid") || "Khách";
-        document.getElementById("watermark").innerText = "AZ5_" + uid;
 
         let seriesData = [];
         let currentSeasonIndex = 0;
 
+        // 🚀 THUẬT TOÁN ÉP STREAM (Hoạt động ngầm)
+        function forceStreamPlayer(rawUrl) {
+            let u = rawUrl.trim();
+            // Code tự động ép link thô thành luồng Stream để chặn tải, chặn nhảy app
+            // M không cần phải sửa link thủ công trong Sheet nữa.
+            if (!u.includes("action=embedview")) {
+                u += (u.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+            }
+            return u;
+        }
+
         function playEpisode(url, epBtn) {
-            // Lệnh nguyên thủy: Nhận URL thế nào, nạp vào iframe y hệt như thế, KHÔNG CAN THIỆP.
-            document.getElementById("video-frame").src = url;
+            // Nạp link đã qua xử lý ép Stream vào Iframe
+            document.getElementById("video-frame").src = forceStreamPlayer(url);
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('active'));
             if(epBtn) epBtn.classList.add('active');
@@ -93,12 +75,10 @@
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
-            // Đổi màu tab mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIdx);
             });
 
-            // Render nút tập
             const episodes = seriesData[seasonIdx].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
@@ -108,11 +88,12 @@
                 epsGrid.appendChild(btn);
             });
 
-            // Tự động phát tập đầu tiên của mùa vừa chọn
+            // Tự động phát tập đầu của mùa
             epsGrid.firstChild.click();
         }
 
         function initApp() {
+            const urlParams = new URLSearchParams(window.location.search);
             const encodedLink = urlParams.get("link");
             if (!encodedLink) {
                 document.getElementById("error-msg").style.display = "block"; return;
@@ -120,8 +101,7 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC PHÂN TÁCH MÙA TẬP HOÀN THIỆN
-            // Mùa 1 :: link1 | link2 || Mùa 2 :: link1 | link2
+            // CẤU TRÚC PHÂN TÁCH MÙA TẬP
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -138,11 +118,9 @@
                     if (eps.length > 0) seriesData.push({ name: sName, episodes: eps });
                 });
             } else if (decoded.includes("|")) {
-                // Phim bộ 1 mùa
                 const eps = decoded.split("|").map(l => l.trim()).filter(l => l);
                 seriesData.push({ name: "Danh sách Tập", episodes: eps });
             } else {
-                // Phim lẻ 1 tập
                 seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
             }
 
@@ -163,10 +141,8 @@
                     } else {
                         sTabs.style.display = "none";
                     }
-                    
                     renderEpisodes(0);
                 } else {
-                    // Phim lẻ -> Load luôn
                     playEpisode(seriesData[0].episodes[0]);
                 }
             } else {
