@@ -3,77 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🍿 Xem Phim Subteam</title>
+    <title>🍿 Trình Phát Phim Siêu Tốc</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: sans-serif; color: white; overflow-x: hidden; }
-        
-        /* KHUNG VIDEO GỐC CHUẨN MOBILE */
-        .video-container { 
+        /* RESET & BASE */
+        body, html { margin: 0; padding: 0; width: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: white; overflow-x: hidden; }
+        * { box-sizing: border-box; }
+
+        /* KHUNG VIDEO GỐC NATIVE */
+        .video-wrapper { 
             width: 100vw; 
             aspect-ratio: 16/9; 
             background: #000; 
             position: relative; 
-            border-bottom: 2px solid #2a2e39;
+            border-bottom: 2px solid #1c212e;
         }
 
-        /* Thẻ video playsinline ép chạy trong webapp, có sẵn nút fullscreen của máy */
         video { 
             width: 100%; 
             height: 100%; 
             outline: none; 
-            background: #000;
+            object-fit: contain;
         }
-        
-        /* 🛡️ WATERMARK TRÔI CHẬM DỌC 4 VIỀN (KHÔNG VÀO GIỮA) */
+
+        /* 🛡️ WATERMARK ĐI MEN THEO VIỀN (KHÔNG VÀO GIỮA) */
         #watermark {
             position: absolute;
-            color: rgba(255, 255, 255, 0.15); /* Mờ 15% */
+            color: rgba(255, 255, 255, 0.12); /* Trắng mờ 12% */
             font-size: 14px;
             font-weight: normal;
+            letter-spacing: 1px;
             pointer-events: none;
             user-select: none;
             z-index: 10;
-            white-space: nowrap;
-            /* Trôi siêu chậm 120s 1 vòng */
-            animation: borderPatrol 120s linear infinite; 
+            /* 100s cho 1 vòng chạy quanh viền */
+            animation: borderWalk 100s linear infinite; 
         }
 
-        /* Keyframes ép chữ chỉ đi sát lề (margin ~5%) */
-        @keyframes borderPatrol {
-            0%   { top: 5%; left: 5%; transform: translateX(0); }
-            25%  { top: 5%; left: 95%; transform: translateX(-100%); }
-            50%  { top: 85%; left: 95%; transform: translateX(-100%); }
-            75%  { top: 85%; left: 5%; transform: translateX(0); }
-            100% { top: 5%; left: 5%; transform: translateX(0); }
+        /* Thuật toán ép Watermark đi theo hình chữ nhật sát lề */
+        @keyframes borderWalk {
+            0%   { top: 5%; left: 2%; transform: translate(0, 0); }
+            25%  { top: 5%; left: 98%; transform: translate(-100%, 0); } /* Góc trên phải */
+            50%  { top: 88%; left: 98%; transform: translate(-100%, 0); } /* Góc dưới phải */
+            75%  { top: 88%; left: 2%; transform: translate(0, 0); } /* Góc dưới trái */
+            100% { top: 5%; left: 2%; transform: translate(0, 0); } /* Về lại trên trái */
         }
 
-        /* GIAO DIỆN CHỌN TẬP & MÙA */
-        .controls-container { padding: 15px; display: none; }
-        h3 { color: #f1c40f; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; }
+        /* GIAO DIỆN CHỌN TẬP BÊN DƯỚI */
+        .ui-container { padding: 15px; display: none; }
         
-        /* Tab Chọn Mùa */
-        .season-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid #2a2e39; scrollbar-width: none; }
-        .season-tabs::-webkit-scrollbar { display: none; }
-        .season-btn { background: #1c212e; border: 1px solid #2a2e39; color: #94a3b8; padding: 8px 16px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; font-size: 14px; transition: 0.2s; }
-        .season-btn.active { background: #e50914; color: #fff; border-color: #e50914; }
+        .header-title { color: #f1c40f; margin: 0 0 15px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px;}
 
-        /* Lưới Chọn Tập */
-        .episodes-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .ep-btn { background: #1c212e; border: 1px solid #2a2e39; color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; text-align: center; font-size: 14px; flex: 1 1 calc(25% - 8px); box-sizing: border-box; min-width: 65px; font-weight: bold; transition: 0.2s; }
-        .ep-btn:active { transform: scale(0.95); }
-        .ep-btn.playing { background: #e50914; color: #fff; border-color: #e50914; }
+        /* TAB CHỌN MÙA (SEASONS) */
+        .season-tabs { 
+            display: flex; 
+            gap: 8px; 
+            overflow-x: auto; 
+            padding-bottom: 12px; 
+            border-bottom: 1px solid #1c212e; 
+            margin-bottom: 15px; 
+            -webkit-overflow-scrolling: touch; /* Lướt mượt trên iOS */
+        }
+        .season-tabs::-webkit-scrollbar { display: none; } /* Ẩn thanh cuộn */
+        
+        .season-btn { 
+            background: #151a26; 
+            border: 1px solid #2a2e39; 
+            color: #94a3b8; 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer; 
+            white-space: nowrap; 
+            transition: 0.2s;
+        }
+        .season-btn.active { 
+            background: #e50914; 
+            color: #fff; 
+            border-color: #e50914; 
+        }
+
+        /* LƯỚI NÚT CHỌN TẬP */
+        .episodes-grid { 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: 10px; 
+        }
+        
+        .ep-btn { 
+            background: #151a26; 
+            border: 1px solid #2a2e39; 
+            color: #cbd5e1; 
+            padding: 12px 5px; 
+            border-radius: 8px; 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: 600;
+            cursor: pointer; 
+            transition: all 0.15s ease;
+        }
+        .ep-btn:active { transform: scale(0.92); }
+        .ep-btn.playing { 
+            background: #e50914; 
+            color: #fff; 
+            border-color: #e50914; 
+            box-shadow: 0 4px 10px rgba(229, 9, 20, 0.3);
+        }
+        
+        #error-msg { text-align: center; padding: 20px; color: #ff4d4f; display: none; }
     </style>
 </head>
 <body>
 
-    <div class="video-container" id="vid-container">
+    <div class="video-wrapper">
         <div id="watermark">UID: Đang tải...</div>
         
-        <video id="player" controls playsinline controlsList="nodownload noplaybackrate" disablePictureInPicture></video>
+        <video id="player" controls playsinline controlsList="nodownload noplaybackrate" disablePictureInPicture oncontextmenu="return false;">
+            Trình duyệt của bạn không hỗ trợ phát video HTML5.
+        </video>
     </div>
-    
-    <div class="controls-container" id="controls-ui">
-        <h3>🎬 Danh sách tập phim</h3>
+
+    <div id="error-msg">⚠️ Không tìm thấy dữ liệu phim!</div>
+
+    <div class="ui-container" id="ui-container">
+        <h3 class="header-title">🎬 Danh sách phát</h3>
         <div class="season-tabs" id="season-tabs"></div>
         <div class="episodes-grid" id="episodes-grid"></div>
     </div>
@@ -82,142 +135,149 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        
+
         const urlParams = new URLSearchParams(window.location.search);
-        document.getElementById("watermark").innerText = "AZ5_UID: " + (urlParams.get("uid") || "Ẩn Danh");
+        document.getElementById("watermark").innerText = "AZ5_UID: " + (urlParams.get("uid") || "Ẩn_Danh");
 
         let seriesData = [];
 
-        // 🚀 THUẬT TOÁN BÓC LINK TRỰC TIẾP (Bỏ qua Cloudflare)
-        function getDirectMp4(url) {
-            let u = url.trim();
+        // HÀM ÉP LẤY LUỒNG TRỰC TIẾP (BYPASS DEEP LINK MICROSOFT)
+        function getDirectStreamUrl(url) {
+            let u = url.trim().split('?')[0]; // Cắt rác đuôi ?e=
+            
+            // Xử lý admin lỡ copy iframe
             if (u.toLowerCase().startsWith("<iframe")) {
                 const match = u.match(/src=["'](.*?)["']/);
-                if (match && match[1]) u = match[1];
+                if (match && match[1]) u = match[1].split('?')[0];
             }
-            // Gọt bỏ token thừa và ép tải luồng
-            u = u.split('?')[0]; 
+
+            // Gắn cờ ép tải luồng trực tiếp thay vì load web giao diện
             if (u.includes("sharepoint.com") || u.includes("1drv.ms")) {
                 u += "?download=1";
             }
             return u;
         }
 
+        // HÀM CHUYỂN TẬP
         function playEpisode(url, epBtn) {
             const player = document.getElementById("player");
-            player.src = getDirectMp4(url);
+            
+            player.src = getDirectStreamUrl(url);
             player.load();
             
-            // Xử lý auto-play an toàn trên mobile
+            // Bắt lỗi khi HĐH tự động chặn Autoplay
             let playPromise = player.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.log("Trình duyệt yêu cầu ấn Play thủ công");
+                    console.log("HĐH yêu cầu người dùng tự bấm Play.");
                 });
             }
             
+            // Highlight nút tập đang phát
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('playing'));
             if(epBtn) epBtn.classList.add('playing');
         }
 
-        function renderEpisodes(seasonIndex) {
-            const grid = document.getElementById("episodes-grid");
-            grid.innerHTML = "";
-            
-            // Cập nhật màu nút Mùa
+        // HÀM RENDER MÙA (SEASON)
+        function renderSeason(seasonIndex) {
+            const epsGrid = document.getElementById("episodes-grid");
+            epsGrid.innerHTML = ""; 
+
+            // Cập nhật Tab đang chọn
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIndex);
             });
 
-            // Đổ danh sách tập
+            // Lấy danh sách tập của mùa đó
             const episodes = seriesData[seasonIndex].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
                 btn.className = "ep-btn";
                 btn.innerText = "Tập " + (idx + 1);
+                
                 btn.onclick = () => playEpisode(url, btn);
-                grid.appendChild(btn);
+                epsGrid.appendChild(btn);
             });
+            
+            // Cuộn mượt màn hình lên trên
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function initPlayer() {
+        // HÀM PHÂN TÍCH DATA TỪ GOOGLE SHEET CHUYỂN QUA
+        function parseData() {
             const encodedLink = urlParams.get("link");
-            if(!encodedLink) return;
+            if(!encodedLink) {
+                document.getElementById("error-msg").style.display = "block";
+                return;
+            }
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
             
-            // LOGIC PHÂN TÍCH DỮ LIỆU ĐẦU VÀO
+            // 1. Dựng mảng dữ liệu (Hỗ trợ cấu trúc || và ::)
             if (decoded.includes("||")) {
-                // Có nhiều mùa
-                const seasonParts = decoded.split("||");
-                seasonParts.forEach((part, idx) => {
-                    let sName = "Mùa " + (idx + 1);
+                const seasons = decoded.split("||");
+                seasons.forEach((part, idx) => {
+                    let sName = "Phần " + (idx + 1);
                     let sLinks = part;
                     
                     if (part.includes("::")) {
-                        const splitIdx = part.indexOf("::");
-                        sName = part.substring(0, splitIdx).trim();
-                        sLinks = part.substring(splitIdx + 2);
+                        const splitParts = part.split("::");
+                        sName = splitParts[0].trim();
+                        sLinks = splitParts[1];
                     }
-                    seriesData.push({ 
-                        name: sName, 
-                        episodes: sLinks.split("|").map(l => l.trim()).filter(l => l) 
-                    });
+                    
+                    let epsArray = sLinks.split("|").map(l => l.trim()).filter(l => l);
+                    if (epsArray.length > 0) {
+                        seriesData.push({ name: sName, episodes: epsArray });
+                    }
                 });
             } else if (decoded.includes("|")) {
-                // 1 mùa nhiều tập
-                seriesData.push({ 
-                    name: "Danh sách Tập", 
-                    episodes: decoded.split("|").map(l => l.trim()).filter(l => l) 
-                });
+                // Phim bộ không có mùa
+                let epsArray = decoded.split("|").map(l => l.trim()).filter(l => l);
+                seriesData.push({ name: "Phim Bộ", episodes: epsArray });
             } else {
                 // Phim lẻ
-                seriesData.push({ 
-                    name: "Phim Lẻ", 
-                    episodes: [decoded.trim()] 
-                });
+                let link = decoded.trim();
+                if (link) seriesData.push({ name: "Phim Lẻ", episodes: [link] });
             }
 
-            // DỰNG GIAO DIỆN NẾU LÀ PHIM BỘ
+            // 2. Render Giao diện
             if (seriesData.length > 0) {
                 if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
-                    document.getElementById("controls-ui").style.display = "block";
+                    document.getElementById("ui-container").style.display = "block";
                     
-                    // Dựng tab chọn mùa (chỉ hiện nếu > 1 mùa)
                     const sTabs = document.getElementById("season-tabs");
+                    // Chỉ hiện thanh Tab Mùa nếu có từ 2 mùa trở lên
                     if (seriesData.length > 1) {
                         seriesData.forEach((season, idx) => {
                             const btn = document.createElement("div");
                             btn.className = "season-btn";
                             btn.innerText = season.name;
-                            btn.onclick = () => {
-                                renderEpisodes(idx);
-                                // Chuyển mùa thì không tự phát, để khách tự chọn tập
-                            };
+                            btn.onclick = () => renderSeason(idx);
                             sTabs.appendChild(btn);
                         });
                     } else {
-                        sTabs.style.display = "none";
+                        sTabs.style.display = "none"; 
                     }
                     
-                    // Khởi tạo hiển thị Mùa 1
-                    renderEpisodes(0);
-                    
-                    // Tự động phát tập 1 của mùa 1
+                    // Khởi động mùa 1, tập 1
+                    renderSeason(0);
                     const firstBtn = document.querySelector('.ep-btn');
                     playEpisode(seriesData[0].episodes[0], firstBtn);
-                    
                 } else {
-                    // Trực tiếp phát phim lẻ
+                    // Phim lẻ (Ẩn toàn bộ UI chọn tập)
                     playEpisode(seriesData[0].episodes[0]);
                 }
+            } else {
+                document.getElementById("error-msg").style.display = "block";
             }
         }
-        
-        initPlayer();
 
-        // Bảo mật cơ bản: chặn chuột phải
+        parseData();
+
+        // Chống tải, chống Inspect, bảo vệ web
         document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey) || e.ctrlKey) return false; }
     </script>
 </body>
 </html>
