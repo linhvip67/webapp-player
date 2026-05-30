@@ -7,13 +7,13 @@
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: white; overflow-x: hidden; }
         
-        /* 🎬 KHUNG VIDEO NẰM IM TRONG WEBAPP */
-        .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 1px solid #2a2e39; }
+        /* 🎬 KHUNG VIDEO GỌN GÀNG */
+        .video-wrapper { width: 100vw; aspect-ratio: 16/9; background: #000; position: relative; overflow: hidden; border-bottom: 2px solid #e50914; }
         
-        /* Đã xóa Watermark, mở khóa toàn bộ quyền cho Iframe */
-        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; position: relative; z-index: 5; }
+        /* IFRAME: Cho phép Full-screen, tự động che lấp mọi thứ khi phóng to */
+        iframe { width: 100%; height: 100%; border: none; outline: none; display: block; background: #000; }
         
-        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP */
+        /* 📋 GIAO DIỆN CHỌN MÙA & TẬP (Tối ưu cảm ứng) */
         .controls-container { padding: 15px; display: none; }
         
         /* Thanh Tab Mùa */
@@ -34,7 +34,7 @@
 <body>
 
     <div class="video-wrapper">
-        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" frameborder="0"></iframe>
+        <iframe id="video-frame" src="" allow="autoplay; fullscreen" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
     </div>
     
     <div id="error-msg">⚠️ Lỗi: Không tìm thấy dữ liệu phim!</div>
@@ -47,19 +47,19 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         window.Telegram.WebApp.expand();
-        
         let seriesData = [];
 
-        function playEpisode(url, epBtn) {
-            let finalUrl = url.trim();
+        function playEpisode(rawUrl, epBtn) {
+            let cleanUrl = rawUrl.trim();
             
-            // 🚀 ĐÒN CHỐT: Code tự động gắn lệnh giấu nút Tải/Share vào link gốc. 
-            // M không cần phải sửa link trong Google Sheet nữa!
-            if (finalUrl.includes("sharepoint.com") && !finalUrl.includes("action=embedview")) {
-                finalUrl += (finalUrl.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+            // 🔥 BÍ KÍP ÉP GIAO DIỆN SẠCH CỦA MICROSOFT (Không Tải, Không Share, Không Nhảy App)
+            if (cleanUrl.includes("sharepoint.com") || cleanUrl.includes("1drv.ms")) {
+                if (!cleanUrl.includes("action=embedview")) {
+                    cleanUrl += (cleanUrl.includes("?") ? "&" : "?") + "action=embedview&wmode=transparent";
+                }
             }
-            
-            document.getElementById("video-frame").src = finalUrl;
+
+            document.getElementById("video-frame").src = cleanUrl;
 
             document.querySelectorAll('.ep-btn').forEach(btn => btn.classList.remove('active'));
             if(epBtn) epBtn.classList.add('active');
@@ -69,12 +69,10 @@
             const epsGrid = document.getElementById("episodes-grid");
             epsGrid.innerHTML = ""; 
 
-            // Đổi màu tab mùa
             document.querySelectorAll('.season-btn').forEach((btn, idx) => {
                 btn.classList.toggle('active', idx === seasonIdx);
             });
 
-            // Render nút tập
             const episodes = seriesData[seasonIdx].episodes;
             episodes.forEach((url, idx) => {
                 const btn = document.createElement("div");
@@ -84,7 +82,6 @@
                 epsGrid.appendChild(btn);
             });
 
-            // Tự động phát tập đầu tiên
             epsGrid.firstChild.click();
         }
 
@@ -98,7 +95,6 @@
 
             const decoded = decodeURIComponent(escape(atob(encodedLink))); 
 
-            // CẤU TRÚC PHÂN TÁCH MÙA TẬP
             if (decoded.includes("||")) {
                 const seasons = decoded.split("||");
                 seasons.forEach((seasonStr, index) => {
@@ -121,7 +117,6 @@
                 seriesData.push({ name: "Phim Lẻ", episodes: [decoded.trim()] });
             }
 
-            // DỰNG GIAO DIỆN
             if (seriesData.length > 0) {
                 if (seriesData.length > 1 || seriesData[0].episodes.length > 1) {
                     document.getElementById("controls-ui").style.display = "block";
@@ -138,7 +133,6 @@
                     } else {
                         sTabs.style.display = "none";
                     }
-                    
                     renderEpisodes(0);
                 } else {
                     playEpisode(seriesData[0].episodes[0]);
@@ -149,6 +143,7 @@
         }
 
         initApp();
+        // Chống nhấp chuột phải trên PC
         document.addEventListener('contextmenu', event => event.preventDefault());
     </script>
 </body>
